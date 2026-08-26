@@ -5,7 +5,7 @@ export const categories: Category[] = [
     slug: "football",
     name: "Football",
     description: "Match-day kits, boots and training essentials built for pace.",
-    image: "https://images.unsplash.com/photo-1574629810360-214f3774381b?q=80&w=1200&auto=format&fit=crop",
+    image: "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?q=80&w=1200&auto=format&fit=crop",
     color: "#D4FF32",
   },
   {
@@ -234,7 +234,7 @@ export const products: Product[] = [
     specifications: { Fit: "Athletic", Material: "Recycled Poly", Technology: "Dri-FIT ADV", Origin: "Portugal" },
     variants: [
       { color: "Basco Navy", colorHex: "#1C2742", sizes: ["S","M","L","XL","XXL"], images: ["https://images.unsplash.com/photo-1523381210434-271e8be1f52b?q=80&w=1000&auto=format&fit=crop"] },
-      { color: "Away Stone", colorHex: "#EDE9E3", sizes: ["S","M","L","XL","XXL"], images: ["https://images.unsplash.com/photo-1574629810360-214f3774381b?q=80&w=1000&auto=format&fit=crop"] },
+      { color: "Away Stone", colorHex: "#EDE9E3", sizes: ["S","M","L","XL","XXL"], images: ["https://images.unsplash.com/photo-1526232761682-d26e03ac148e?q=80&w=1000&auto=format&fit=crop"] },
     ],
     defaultVariantIndex: 0,
     images: ["https://images.unsplash.com/photo-1523381210434-271e8be1f52b?q=80&w=1000&auto=format&fit=crop"],
@@ -362,7 +362,7 @@ export const products: Product[] = [
     specifications: { Material: "Ripstop", Brim: "Soft", Closure: "Adjustable", Weight: "62g" },
     variants: [
       { color: "Obsidian", colorHex: "#0B1220", images: ["https://images.unsplash.com/photo-1588850561407-ed78c282e89b?q=80&w=1000&auto=format&fit=crop"] },
-      { color: "Stone", colorHex: "#EDE9E3", images: ["https://images.unsplash.com/photo-1529391409740-59f1cea3f4c2?q=80&w=1000&auto=format&fit=crop"] },
+      { color: "Stone", colorHex: "#EDE9E3", images: ["https://images.unsplash.com/photo-1588850561407-ed78c282e89b?q=80&w=1000&auto=format&fit=crop"] },
       { color: "Lime", colorHex: "#D4FF32", images: ["https://images.unsplash.com/photo-1556306535-0f09a537f0a3?q=80&w=1000&auto=format&fit=crop"] },
     ],
     defaultVariantIndex: 0,
@@ -511,11 +511,11 @@ export const products: Product[] = [
     features: ["24h cold / 12h hot", "Leakproof", "Powder coat", "Wide mouth"],
     specifications: { Capacity: "1L", Material: "Stainless steel", Insulation: "Double wall vacuum", Weight: "340g" },
     variants: [
-      { color: "Obsidian", colorHex: "#0B1220", images: ["https://images.unsplash.com/photo-1523369364227-249b4a2ecc8c?q=80&w=1000&auto=format&fit=crop"] },
+      { color: "Obsidian", colorHex: "#0B1220", images: ["https://images.unsplash.com/photo-1602143407151-7111542de6e8?q=80&w=1000&auto=format&fit=crop"] },
       { color: "Stone", colorHex: "#EDE9E3", images: ["https://images.unsplash.com/photo-1602143407151-7111542de6e8?q=80&w=1000&auto=format&fit=crop"] },
     ],
     defaultVariantIndex: 0,
-    images: ["https://images.unsplash.com/photo-1523369364227-249b4a2ecc8c?q=80&w=1000&auto=format&fit=crop"],
+    images: ["https://images.unsplash.com/photo-1602143407151-7111542de6e8?q=80&w=1000&auto=format&fit=crop"],
     trending: true,
   },
   {
@@ -533,10 +533,10 @@ export const products: Product[] = [
     features: ["4mm German latex", "Negative cut", "Knitted wrist", "Punch zone"],
     specifications: { Palm: "German latex 4mm", Cut: "Negative", Closure: "Knitted", Conditions: "All weather" },
     variants: [
-      { color: "Lime / Obsidian", colorHex: "#D4FF32", sizes: ["8","9","10","11"], images: ["https://images.unsplash.com/photo-1574629810360-214f3774381b?q=80&w=1000&auto=format&fit=crop"] },
+      { color: "Lime / Obsidian", colorHex: "#D4FF32", sizes: ["8","9","10","11"], images: ["https://images.unsplash.com/photo-1575361204480-aadea25e6e68?q=80&w=1000&auto=format&fit=crop"] },
     ],
     defaultVariantIndex: 0,
-    images: ["https://images.unsplash.com/photo-1574629810360-214f3774381b?q=80&w=1000&auto=format&fit=crop"],
+    images: ["https://images.unsplash.com/photo-1575361204480-aadea25e6e68?q=80&w=1000&auto=format&fit=crop"],
   },
   {
     id: "p023",
@@ -680,10 +680,10 @@ export const products: Product[] = [
     features: ["Carbon fiber", "45g per guard", "Low profile", "Sleeve included"],
     specifications: { Material: "Carbon fiber", Weight: "45g", Size: "S/M/L", Includes: "Compression sleeve" },
     variants: [
-      { color: "Obsidian", colorHex: "#0B1220", sizes: ["S","M","L"], images: ["https://images.unsplash.com/photo-1574629810360-214f3774381b?q=80&w=1000&auto=format&fit=crop"] },
+      { color: "Obsidian", colorHex: "#0B1220", sizes: ["S","M","L"], images: ["https://images.unsplash.com/photo-1575361204480-aadea25e6e68?q=80&w=1000&auto=format&fit=crop"] },
     ],
     defaultVariantIndex: 0,
-    images: ["https://images.unsplash.com/photo-1574629810360-214f3774381b?q=80&w=1000&auto=format&fit=crop"],
+    images: ["https://images.unsplash.com/photo-1575361204480-aadea25e6e68?q=80&w=1000&auto=format&fit=crop"],
   },
   {
     id: "p030",
@@ -811,7 +811,7 @@ export const journalPosts: JournalPost[] = [
     title: "How to Choose Football Boots: A Basco Buying Guide",
     excerpt: "Firm ground, soft ground, turf – understand plate, fit and upper to find your match.",
     category: "Football",
-    image: "https://images.unsplash.com/photo-1574629810360-214f3774381b?q=80&w=1200&auto=format&fit=crop",
+    image: "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?q=80&w=1200&auto=format&fit=crop",
     date: "Jan 12, 2025",
     readTime: "6 min",
     content: "Choosing football boots starts with surface. FG for firm natural grass, SG for soft, AG for artificial. Fit should be tight but not numb – knit uppers accommodate wide feet better. Plate stiffness determines energy return. For wingers, choose carbon-infused; for midfield control, slightly flexible plate helps.",

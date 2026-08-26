@@ -20,7 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
       template: "%s | Basco Sports",
     },
     description: "Premium sports gear and apparel – football, cricket, basketball, running, gym & outdoor. Editorial curation, performance tested. Demo store.",
-    metadataBase: new URL("https://basco-sports.example.com"),
+    metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://basco-sports.example.com"),
     openGraph: {
       title: "Basco Sports – Premium Sports Gear",
       description: "Editorial curation, performance tested. Football, cricket, basketball, running, gym & outdoor.",

@@ -12,6 +12,7 @@ out/
 build/
 .vercel
 .dev
+*.tsbuildinfo
 
 # misc
 .DS_Store
@@ -35,3 +36,4 @@ yarn-error.log*
 # cloudflare
 .wrangler
 .dev.vars
+.env*

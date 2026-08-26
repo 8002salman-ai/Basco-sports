@@ -83,6 +83,11 @@ npm run lint
 
 Node 18+ recommended (tested Node 22).
 
+> **⚠ Local `.env.local` gotcha:** Next.js expands `$VAR` inside `.env*` files, so a scrypt hash
+> `scrypt$16384$8$1$salt$dk` gets mangled locally. Escape the dollar signs as `\$` when writing
+> the hash in `.env.local` (e.g. `scrypt\$16384\$8\$1\$salt\$dk`). In the Vercel dashboard / CLI
+> env vars are literal — no escaping needed there.
+
 ## Environment Variables – Complete Reference
 
 See `.env.example` for dummy placeholders. Never commit real secrets, never expose server-only vars with NEXT_PUBLIC_ prefix.
@@ -185,10 +190,11 @@ See `.env.example` for dummy placeholders. Never commit real secrets, never expo
 
 **Cloudflare Pages:**
 1. Pages dashboard > Create project > Connect to Git
-2. Framework preset: Next.js (or None with build command)
-3. Build command: `npx @cloudflare/next-on-pages` OR `npm run build` if using Pages Functions adapter. For this demo, `npm run build` works for static, but for API routes (`/api/admin/*`) you need Pages Functions or `@cloudflare/next-on-pages`.
-   - Recommended: Build command `npx @cloudflare/next-on-pages`, Output directory `.vercel/output/static`
-   - Node version: set env `NODE_VERSION=20` in Pages > Settings > Environment variables > Variables
+2. Framework preset: None, Build command: `npm run pages:build`, Output directory: `.vercel/output/static`
+3. `@cloudflare/next-on-pages@1.13.15`, `wrangler@^3` and `vercel` are already installed as devDependencies (newer next-on-pages versions require `next >= 14.3` — this project pins 14.2.5, so do not bump next-on-pages).
+4. Node version: set env `NODE_VERSION=20` in Pages > Settings > Environment variables > Variables
+5. Node.js compatibility: admin API routes use `node:crypto` (scrypt). Enable the **Node.js compatibility** flag (nodejs_compat) in Pages > Settings > Functions > Compatibility flags, or use a compatibility date of 2026-08-04+ where it is on by default. `crypto.scrypt` is supported.
+   - Note: `npm run pages:build` may fail locally on Windows (Vercel CLI symlink + `npx` spawn limitations) — it builds fine on Cloudflare's Linux CI.
 4. Environment Variables: Pages > Settings > Environment variables (Encrypt secrets):
    - Same list as Vercel, but add as Encrypted for server-only secrets.
    - `NEXT_PUBLIC_` vars can be added as plain Variables.

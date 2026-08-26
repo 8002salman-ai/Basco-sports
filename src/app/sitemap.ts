@@ -2,7 +2,7 @@ import { MetadataRoute } from "next";
 import { products, categories, journalPosts } from "@/data/products";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = "https://basco-sports.example.com";
+  const base = process.env.NEXT_PUBLIC_SITE_URL || "https://basco-sports.example.com";
   const now = new Date();
   const staticPages = ["", "/shop", "/cart", "/checkout", "/about", "/contact", "/faq", "/shipping", "/privacy", "/terms", "/journal", "/account"];
   const productPages = products.map(p => `/product/${p.slug}`);
