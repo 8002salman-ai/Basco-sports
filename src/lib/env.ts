@@ -17,6 +17,7 @@ export interface ServerEnv {
   HERMES_API_KEY: string | null;
   HERMES_BASE_URL: string | null;
   HERMES_ENABLED: boolean;
+  SUPABASE_SERVICE_ROLE_KEY: string | null;
   NODE_ENV: string;
 }
 
@@ -64,6 +65,7 @@ export function getServerEnv(): ServerEnv {
     HERMES_API_KEY: getTrimmed('HERMES_API_KEY'),
     HERMES_BASE_URL: getTrimmed('HERMES_BASE_URL'),
     HERMES_ENABLED: getBoolean('HERMES_ENABLED', false),
+    SUPABASE_SERVICE_ROLE_KEY: getTrimmed('SUPABASE_SERVICE_ROLE_KEY'),
     NODE_ENV: process.env.NODE_ENV || 'development',
   };
 }

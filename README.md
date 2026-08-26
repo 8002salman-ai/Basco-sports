@@ -201,6 +201,12 @@ See `.env.example` for dummy placeholders. Never commit real secrets, never expo
    - Optional: `NEXT_PUBLIC_GA_MEASUREMENT_ID`, `NEXT_PUBLIC_ADSENSE_CLIENT_ID`, slot IDs, `GOOGLE_SITE_VERIFICATION`, `STRIPE_*`, `HERMES_*` (see .env.example)
 6. First build may take a few minutes (installs deps + Vercel build on Linux). Deploy – Cloudflare serves remote Unsplash as-is.
 
+**Supabase (admin data layer):**
+- The admin panels (Catalog CRUD, Orders, Users, Settings) use `src/lib/admin/db.ts` – a `DbAdapter` interface with a localStorage adapter (demo) and a Supabase/PostgREST adapter. When `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` are set, the panels switch to Supabase mode and route every operation through `/api/admin/db`, which performs CRUD server-side with `SUPABASE_SERVICE_ROLE_KEY` (never shipped to the browser).
+- Schema + RLS: `supabase/migrations/0001_admin_schema.sql` (tables: `products`, `orders`, `users`, `store_settings`; anon can read active products, admin writes go through the service role).
+- First catalog load in Supabase mode seeds the 34 products into the `products` table when it is empty.
+- Env vars: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (public), `SUPABASE_SERVICE_ROLE_KEY` (server-only secret).
+
 **Google account verification, consent, AdSense policy:**
 - GA: Need Google account, GA4 property, consent banner implemented (we have). GDPR requires explicit opt-in before tracking – we enforce.
 - AdSense: Need Google account, AdSense account approval (site review), domain ownership, ads.txt, privacy policy with cookie disclosure (we have). Our AdSlot prevents invalid ad requests without consent/config, avoiding policy violation.

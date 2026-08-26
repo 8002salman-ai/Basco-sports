@@ -9,6 +9,9 @@ import { DbStatus } from './DbStatus';
 
 const SEED_FLAG = 'basco_admin_v1:seeded';
 
+// Guards against concurrent seeding (React StrictMode double-mount in dev).
+let seedInFlight: Promise<void> | null = null;
+
 interface ProductForm {
   name: string;
   slug: string;
@@ -63,27 +66,53 @@ export function CatalogPanel() {
     try {
       const existing = await db.list<AdminProduct>('products', { orderBy: 'updatedAt desc' });
       if (existing.length === 0) {
-        let seeded = false;
-        try {
-          seeded = window.localStorage.getItem(SEED_FLAG) === '1';
-        } catch {
-          /* ignore */
-        }
-        if (!seeded) {
-          const now = new Date().toISOString();
-          const seed: AdminProduct[] = seedProducts.map((p) => ({
-            ...p,
-            isActive: true,
-            createdAt: now,
-            updatedAt: now,
-          }));
-          for (const p of seed) await db.insert('products', p);
+        // Seed the catalog on first run. In localStorage mode the seed flag
+        // prevents re-seeding after the user deletes everything; in Supabase
+        // mode the DB is authoritative so an empty table is always seeded.
+        let shouldSeed = true;
+        if (db.mode === 'local') {
           try {
-            window.localStorage.setItem(SEED_FLAG, '1');
+            shouldSeed = window.localStorage.getItem(SEED_FLAG) !== '1';
           } catch {
             /* ignore */
           }
-          setRows(seed);
+        }
+        if (shouldSeed) {
+          const seedFn = async () => {
+            const now = new Date().toISOString();
+            const seed: AdminProduct[] = seedProducts.map((p) => ({
+              ...p,
+              isActive: true,
+              createdAt: now,
+              updatedAt: now,
+            }));
+            for (const p of seed) {
+              try {
+                await db.insert('products', p);
+              } catch (err) {
+                // Row already exists (concurrent seed) – ignore.
+                if (!String((err as Error).message).includes('23505')) throw err;
+              }
+            }
+            if (db.mode === 'local') {
+              try {
+                window.localStorage.setItem(SEED_FLAG, '1');
+              } catch {
+                /* ignore */
+              }
+            }
+          };
+          seedInFlight = seedInFlight ?? seedFn().finally(() => {
+            seedInFlight = null;
+          });
+          await seedInFlight;
+          setRows(seedProducts.map((p, i) => ({
+            ...p,
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            id: `p${String(i + 1).padStart(3, '0')}`,
+          })));
           setLoading(false);
           return;
         }

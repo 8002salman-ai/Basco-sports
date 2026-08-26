@@ -147,10 +147,13 @@ export class SupabaseAdapter implements DbAdapter {
   readonly mode: DbMode = 'supabase';
   private url: string;
   private anonKey: string;
+  /** When set, sent as Authorization: Bearer (e.g. service_role key) – needed to bypass RLS for admin writes. */
+  private authToken: string | null;
 
-  constructor(url: string, anonKey: string) {
+  constructor(url: string, anonKey: string, authToken?: string | null) {
     this.url = url.replace(/\/$/, '');
     this.anonKey = anonKey;
+    this.authToken = authToken ?? null;
   }
 
   private endpoint(table: string, id?: string): string {
@@ -163,6 +166,7 @@ export class SupabaseAdapter implements DbAdapter {
       'Content-Type': 'application/json',
       Prefer: 'return=representation',
     };
+    if (this.authToken) h.Authorization = `Bearer ${this.authToken}`;
     return h;
   }
 
@@ -176,7 +180,10 @@ export class SupabaseAdapter implements DbAdapter {
 
   async list<T>(table: string, opts?: { orderBy?: string; limit?: number }): Promise<T[]> {
     const url = new URL(this.endpoint(table));
-    if (opts?.orderBy) url.searchParams.set('order', opts.orderBy);
+    if (opts?.orderBy) {
+      // PostgREST needs dot notation (col.desc) – the panels pass 'col desc'.
+      url.searchParams.set('order', opts.orderBy.replace(/\s+(asc|desc)$/i, '.$1'));
+    }
     if (opts?.limit) url.searchParams.set('limit', String(opts.limit));
     const res = await fetch(url.toString(), { headers: this.headers('GET') });
     const rows = await this.handle<T[]>(res);
@@ -255,6 +262,72 @@ export class SupabaseAdapter implements DbAdapter {
 }
 
 // ---------------------------------------------------------------------------
+// Server proxy adapter (client-side)
+// Routes all operations through /api/admin/db, which performs them
+// server-side with the SUPABASE_SERVICE_ROLE_KEY (never exposed to the
+// browser). Panels keep using the same DbAdapter interface.
+// ---------------------------------------------------------------------------
+export class ServerProxyAdapter implements DbAdapter {
+  readonly mode: DbMode = 'supabase';
+
+  private async callTable<T>(table: string, action: string, payload?: unknown): Promise<T> {
+    const res = await fetch('/api/admin/db', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ table, action, payload }),
+      cache: 'no-store',
+    });
+    const json = (await res.json().catch(() => ({}))) as { ok?: boolean; data?: T; error?: string };
+    if (!res.ok || !json.ok) {
+      throw new Error(json.error || `Admin DB error: ${res.status}`);
+    }
+    return json.data as T;
+  }
+
+  async list<T>(table: string, opts?: { orderBy?: string; limit?: number }): Promise<T[]> {
+    const rows = await this.callTable<T[]>(table, 'list', { opts });
+    return Array.isArray(rows) ? rows : [];
+  }
+
+  async get<T>(table: string, id: string): Promise<T | null> {
+    return this.callTable<T | null>(table, 'get', { id });
+  }
+
+  async findFirst<T>(table: string, column: string, value: string): Promise<T | null> {
+    return this.callTable<T | null>(table, 'findFirst', { column, value });
+  }
+
+  async insert<T extends { id: string }>(table: string, row: T): Promise<T> {
+    return this.callTable<T>(table, 'insert', { row });
+  }
+
+  async insertRaw<T>(table: string, row: T): Promise<T> {
+    return this.callTable<T>(table, 'insertRaw', { row });
+  }
+
+  async update<T extends { id: string }>(table: string, id: string, patch: Partial<T>): Promise<T | null> {
+    return this.callTable<T | null>(table, 'update', { id, patch });
+  }
+
+  async updateBy<T>(table: string, column: string, value: string, patch: Partial<T>): Promise<T | null> {
+    return this.callTable<T | null>(table, 'updateBy', { column, value, patch });
+  }
+
+  async remove(table: string, id: string): Promise<void> {
+    await this.callTable(table, 'remove', { id });
+  }
+
+  async testConnection(): Promise<DbConnectionResult> {
+    try {
+      const rows = await this.list('store_settings', { limit: 1 });
+      return { ok: true, mode: 'supabase', detail: `Supabase via server proxy (${rows.length} settings rows)` };
+    } catch (e) {
+      return { ok: false, mode: 'supabase', detail: (e as Error).message || 'Supabase proxy unreachable' };
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Factory
 // ---------------------------------------------------------------------------
 export function resolveDbConfig(): { url: string; anonKey: string } | null {
@@ -266,11 +339,15 @@ export function resolveDbConfig(): { url: string; anonKey: string } | null {
 
 let cachedAdapter: DbAdapter | null = null;
 
-/** Returns the active adapter. Defaults to localStorage; upgrades to Supabase when configured. */
+/**
+ * Returns the active adapter.
+ *  - Supabase configured → ServerProxyAdapter (all ops through /api/admin/db,
+ *    service-role key stays server-side)
+ *  - otherwise → localStorage (demo)
+ */
 export function getDb(): DbAdapter {
   if (cachedAdapter) return cachedAdapter;
-  const cfg = resolveDbConfig();
-  cachedAdapter = cfg ? new SupabaseAdapter(cfg.url, cfg.anonKey) : new LocalStorageAdapter();
+  cachedAdapter = resolveDbConfig() ? new ServerProxyAdapter() : new LocalStorageAdapter();
   return cachedAdapter;
 }
 
