@@ -42,15 +42,15 @@ export default function AdminLoginPage() {
         <div className="w-10 h-10 rounded-xl bg-obsidian text-white flex items-center justify-center font-black">B</div>
         <h1 className="mt-6 font-display text-[28px] leading-none">Admin login</h1>
         <p className="mt-3 text-[13px] text-obsidian/60">
-          Requires server env: <code>ADMIN_EMAIL</code>, <code>ADMIN_PASSWORD_HASH</code> (scrypt format <code>scrypt$N$r$p$salt$dk</code>), <code>ADMIN_SESSION_SECRET</code>.
+          Requires server env: <code>ADMIN_EMAIL</code>, <code>ADMIN_PASSWORD_HASH</code> (pbkdf2 format <code>pbkdf2$iterations$salt$dk</code>), <code>ADMIN_SESSION_SECRET</code>.
           No credentials are hardcoded. If env not set, this page returns 503 and admin shows dev-only mock.
         </p>
 
         <div className="mt-6 p-4 rounded-xl bg-stone-50 border text-[12px] leading-relaxed">
-          <div className="font-semibold">Security notes – scrypt-only</div>
+          <div className="font-semibold">Security notes – pbkdf2 (WebCrypto)</div>
           <ul className="mt-2 list-disc pl-5 space-y-1 opacity-70">
             <li>Never use email as password, never hardcode secrets.</li>
-            <li>Password hash must be scrypt: <code>scrypt$16384$8$1$saltBase64$dkBase64</code> using Node crypto.scrypt, random 16-byte salt, 64-byte derived key, N=16384,r=8,p=1. SHA-256 and bcrypt are rejected.</li>
+            <li>Password hash must be pbkdf2: <code>pbkdf2$600000$saltBase64$dkBase64</code> (WebCrypto PBKDF2, SHA-256, 600k iterations, 16-byte salt, 64-byte derived key). Runs on Edge + Node. scrypt, SHA-256 and bcrypt are rejected.</li>
             <li>Session cookie is httpOnly, HMAC SHA256 signed with ADMIN_SESSION_SECRET, 8h expiry, Secure in production.</li>
             <li>See .env.example and README Admin Hardening for local generation command (no network, no secret logging).</li>
           </ul>

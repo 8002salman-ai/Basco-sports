@@ -115,7 +115,7 @@ export default async function AdminOverviewPage() {
             <div className="bg-obsidian text-white rounded-[20px] p-6">
               <h3 className="font-display text-[18px]">Production hardening notes</h3>
               <ul className="mt-4 space-y-3 text-[12px] leading-relaxed text-white/70 list-disc pl-5">
-                <li>Admin: set ADMIN_EMAIL, ADMIN_PASSWORD_HASH (scrypt$N$r$p$salt$dk – Node crypto.scrypt, N=16384,r=8,p=1, 16-byte salt, 64-byte dk), ADMIN_SESSION_SECRET (64+ random). Never hardcode. Use httpOnly HMAC-signed cookie, 8h expiry. This mock allows dev access when env missing, but production must enforce login.</li>
+                <li>Admin: set ADMIN_EMAIL, ADMIN_PASSWORD_HASH (pbkdf2$iterations$salt$dk – WebCrypto PBKDF2, 600k iterations, 16-byte salt, 64-byte dk; works on Edge + Node), ADMIN_SESSION_SECRET (64+ random). Never hardcode. Use httpOnly HMAC-signed cookie, 8h expiry. This mock allows dev access when env missing, but production must enforce login.</li>
                 <li>Payments: checkout remains demo-only, cannot charge. To go live, set PAYMENT_PROVIDER=stripe, add STRIPE_SECRET_KEY server-only, publishable key client, implement StripePaymentProvider, webhook at /api/webhooks/stripe.</li>
                 <li>Google: GA loads only after explicit analytics consent, AdSense only after advertising consent + client+slot configured. No ad request without consent.</li>
                 <li>Hermes: generic connector – treat as custom API. Enable with HERMES_ENABLED, base URL, API key server-only. No assumptions about service.</li>

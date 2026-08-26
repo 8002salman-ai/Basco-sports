@@ -7,6 +7,8 @@ import { useCart } from "@/components/cart/CartContext";
 import { products } from "@/data/products";
 import { formatPrice } from "@/lib/utils";
 import { paymentProvider } from "@/lib/payment-adapter";
+import { getDb } from "@/lib/admin/db";
+import type { AdminOrder } from "@/lib/admin/types";
 import { Lock, ShieldCheck, CreditCard, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -30,6 +32,39 @@ export default function CheckoutPage() {
     try {
       const intent = await paymentProvider.createIntent({ amountCents: Math.round(total*100), currency: "usd", orderId: `demo_order_${Date.now()}`, customerEmail: email, metadata: { coupon: coupon||"none" } });
       console.log("Demo payment intent:", intent);
+      // Persist the order so the admin Orders panel can show it (localStorage in
+      // demo mode, Supabase `orders` table when NEXT_PUBLIC_SUPABASE_* is set).
+      try {
+        const now = new Date().toISOString();
+        const orderId = `demo_order_${Date.now()}`;
+        const order: AdminOrder = {
+          id: orderId,
+          orderNumber: `BS-${String(Date.now()).slice(-6)}`,
+          customerEmail: email,
+          items: items.map((it, idx) => {
+            const p = products.find((pp) => pp.id === it.productId);
+            return {
+              id: `${orderId}-${idx}`,
+              name: p?.name || it.productId,
+              variantLabel: [it.color, it.size].filter(Boolean).join(" / ") || undefined,
+              quantity: it.quantity,
+              price: p?.price ?? 0,
+            };
+          }),
+          subtotal,
+          discount: discountAmt,
+          tax,
+          total,
+          currency: "usd",
+          status: "paid",
+          coupon: coupon || undefined,
+          createdAt: now,
+          updatedAt: now,
+        };
+        await getDb().insert("orders", order);
+      } catch (err) {
+        console.warn("Order persist skipped:", err);
+      }
       await new Promise(r=>setTimeout(r, 1200));
       setStep("success");
       clearCart();
