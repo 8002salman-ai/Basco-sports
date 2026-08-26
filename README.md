@@ -157,9 +157,10 @@ See `.env.example` for dummy placeholders. Never commit real secrets, never expo
 - Never expose secret in client code, UI, logs, README examples – client env only public IDs, server env never sent to client, admin UI masks values, README uses placeholders.
 - Admin requires env-provided credentials/secrets – `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET` – checked server-side.
 
-**Production authentication hardening (scrypt-only):**
-- Admin uses Node's built-in `crypto.scrypt` with versioned format `scrypt$N$r$p$saltBase64$derivedKeyBase64` (N=16384, r=8, p=1, salt 16 bytes, dkLen 64). No external deps.
-- Generate hash locally (no network, no secret logging): `node -e "const c=require('crypto'); const salt=c.randomBytes(16); c.scrypt('YourStrongPassword',salt,64,{N:16384,r:8,p:1},(e,k)=>{console.log(`scrypt$16384$8$1$${salt.toString('base64')}$${k.toString('base64')}`)})"` – see .env.example for full script
+**Production authentication hardening (PBKDF2-only, Edge + Node):**
+- Admin uses **WebCrypto PBKDF2** (SHA-256, 600000 iterations, 16-byte salt, 64-byte key) with format `pbkdf2$iterations$saltBase64$derivedKeyBase64`. WebCrypto runs on **both** Edge runtimes (Cloudflare Pages / Vercel edge) and Node.js — `crypto.scrypt` is Node-only, so it is no longer accepted.
+- Generate hash locally (no network, no secret logging): `node -e "const {subtle,getRandomValues}=globalThis.crypto;(async()=>{const salt=getRandomValues(new Uint8Array(16));const key=await subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt,iterations:600000},await subtle.importKey('raw',new TextEncoder().encode('YourStrongPassword'),'PBKDF2',false,['deriveBits']),512);const b64=u=>Buffer.from(u).toString('base64');console.log('pbkdf2$600000$'+b64(salt)+'$'+b64(key))})()"` – see .env.example for the full script
+- **Local `.env.local` gotcha:** Next.js expands `$` signs in env files. Escape every `$` as `\$` in `.env.local` (e.g. `pbkdf2\$600000\$...`). In Vercel / Cloudflare Pages dashboards paste the hash as-is (no escaping).
 - Use strong `ADMIN_SESSION_SECRET` 64+ random chars, rotate periodically.
 - Consider adding rate limiting, CSRF protection, and storing sessions in DB (e.g., Supabase) for revocation.
 - For full auth, migrate to Clerk/Auth.js/Supabase Auth and protect `/admin` via middleware.
@@ -177,7 +178,7 @@ See `.env.example` for dummy placeholders. Never commit real secrets, never expo
    - Slot IDs as needed
    - `GOOGLE_SITE_VERIFICATION` = token from Search Console
    - `ADMIN_EMAIL` = your admin email
-   - `ADMIN_PASSWORD_HASH` = scrypt hash `scrypt$16384$8$1$...` (generate locally with Node crypto, paste hash only – only this format accepted)
+   - `ADMIN_PASSWORD_HASH` = pbkdf2 hash `pbkdf2$600000$salt$key` (generate locally with Node WebCrypto, paste hash only – only this format accepted; dashboards take it as-is, no `$` escaping)
    - `ADMIN_SESSION_SECRET` = 64-char random (generate locally)
    - `PAYMENT_PROVIDER` = `demo` (keep demo) or `stripe`
    - `STRIPE_SECRET_KEY` = `sk_live_...` (only if going live, server-only)
@@ -188,19 +189,17 @@ See `.env.example` for dummy placeholders. Never commit real secrets, never expo
    - Never commit these values, never put secrets in `NEXT_PUBLIC_` except publishable keys which are public by design.
 5. Deploy – Vercel handles image optimization.
 
-**Cloudflare Pages:**
-1. Pages dashboard > Create project > Connect to Git
-2. Framework preset: None, Build command: `npm run pages:build`, Output directory: `.vercel/output/static`
+**Cloudflare Pages (required: git integration — Linux build):**
+1. Pages dashboard > Create project > Connect to Git > select `8002salman-ai/Basco-sports` > main branch
+2. Build settings: Framework preset: None, Build command: `npm run pages:build`, Output directory: `.vercel/output/static`
 3. `@cloudflare/next-on-pages@1.13.15`, `wrangler@^3` and `vercel` are already installed as devDependencies (newer next-on-pages versions require `next >= 14.3` — this project pins 14.2.5, so do not bump next-on-pages).
-4. Node version: set env `NODE_VERSION=20` in Pages > Settings > Environment variables > Variables
-5. Node.js compatibility: admin API routes use `node:crypto` (scrypt). Enable the **Node.js compatibility** flag (nodejs_compat) in Pages > Settings > Functions > Compatibility flags, or use a compatibility date of 2026-08-04+ where it is on by default. `crypto.scrypt` is supported.
-   - Note: `npm run pages:build` may fail locally on Windows (Vercel CLI symlink + `npx` spawn limitations) — it builds fine on Cloudflare's Linux CI.
-4. Environment Variables: Pages > Settings > Environment variables (Encrypt secrets):
-   - Same list as Vercel, but add as Encrypted for server-only secrets.
-   - `NEXT_PUBLIC_` vars can be added as plain Variables.
-   - Server-only vars: `GOOGLE_SITE_VERIFICATION`, `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `HERMES_API_KEY`, `HERMES_BASE_URL`, `HERMES_ENABLED`
-5. Compatibility: Images remote patterns already allowed; avoid Node-only APIs in client components.
-6. Deploy – Cloudflare serves remote Unsplash as-is.
+4. Node.js compatibility: handled by the repo's `wrangler.toml` (`compatibility_flags = ["nodejs_compat"]`). No dashboard action needed. The Next.js edge runtime needs `node:buffer`/`node:async_hooks`, and admin auth uses WebCrypto PBKDF2 — all supported.
+   - **IMPORTANT — do NOT use `wrangler pages deploy` with a locally built `.vercel/output` on Windows:** the local `vercel build` on Windows deterministically mis-bundles Edge route handlers (verified: login/logout handlers dropped, route-to-function mapping scrambled). Cloudflare's Linux CI (git integration) builds correctly — always deploy via the git-connected project.
+5. Environment Variables: Pages > Settings > Environment variables:
+   - **Already set (via wrangler CLI, encrypted):** `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET`
+   - Add as plain Variable: `NEXT_PUBLIC_SITE_URL` = `https://basco-sports.pages.dev` (needed for correct sitemap/OG)
+   - Optional: `NEXT_PUBLIC_GA_MEASUREMENT_ID`, `NEXT_PUBLIC_ADSENSE_CLIENT_ID`, slot IDs, `GOOGLE_SITE_VERIFICATION`, `STRIPE_*`, `HERMES_*` (see .env.example)
+6. First build may take a few minutes (installs deps + Vercel build on Linux). Deploy – Cloudflare serves remote Unsplash as-is.
 
 **Google account verification, consent, AdSense policy:**
 - GA: Need Google account, GA4 property, consent banner implemented (we have). GDPR requires explicit opt-in before tracking – we enforce.
@@ -211,7 +210,13 @@ See `.env.example` for dummy placeholders. Never commit real secrets, never expo
 - Generic custom API – do not assume service. Treat as your own backend.
 - Required fields: `HERMES_ENABLED` boolean flag, `HERMES_BASE_URL` URL, `HERMES_API_KEY` server-only secret.
 - Implementation: `src/lib/hermes-client.ts` provides `hermesRequest()` which checks `isHermesConfigured()`, returns `notConfigured=true` if env missing, otherwise fetch with Bearer token, never logs key. Extend with typed helpers like `hermesGetHealth()`, `hermesListOrders()`.
+- Proxy routes: `GET /api/hermes/health` and `GET /api/hermes/orders` forward to `HERMES_BASE_URL/health` and `HERMES_BASE_URL/v1/orders` (both edge runtime, so they run on Cloudflare Pages + Vercel).
 - Safe: no external call in demo, inactive until configured.
+
+### Hermes + Salman OS (how to wire)
+- This storefront is a **consumer** of a Hermes API. `HERMES_BASE_URL` must be a **public HTTPS URL** that speaks the Hermes Agent HTTP API (`/health`, `/v1/orders`, ...) with a Bearer token.
+- **Salman OS** (`salman-os-command-center` / `8002salman-ai/salman-os`) is the control tower: its Windows **Hermes bridge** (`bridge/`) runs the local Hermes Agent CLI and polls Supabase for research tasks (outbound-only). Salman OS does not expose `/health` or `/v1/orders`, so do NOT point `HERMES_BASE_URL` at Salman OS.
+- To connect: expose the Hermes Agent (or a thin proxy) at a public URL (e.g. via cloudflared tunnel / VPS), then set `HERMES_ENABLED=true`, `HERMES_BASE_URL=https://<public-hermes-url>`, `HERMES_API_KEY=<key>` in the storefront env (Vercel + Cloudflare). The admin → Integrations → Hermes card and `/api/hermes/*` will then go live.
 
 ## Payments – Demo-Only Guarantee
 
