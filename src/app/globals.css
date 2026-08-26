@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #FCFBF9;
+  --fg: #0B1220;
+  --font-display: "Syne", "Space Grotesk", system-ui, sans-serif;
+  --font-body: "Inter", "General Sans", system-ui, sans-serif;
+  --font-editorial: "Instrument Serif", Georgia, serif;
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body), system-ui, sans-serif;
+}
+
+.font-display {
+  font-family: var(--font-display), system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
+.focus-ring:focus-visible {
+  outline: 2px solid #0B1220;
+  outline-offset: 2px;
+}
+
+/* editorial gradients */
+.hero-gradient {
+  background: radial-gradient(120% 120% at 0% 0%, #D4FF32 0%, transparent 50%), radial-gradient(120% 120% at 100% 0%, #EDE9E3 0%, transparent 50%), linear-gradient(180deg, #F8F7F4 0%, #FCFBF9 100%);
+}
+
+.lime-glow {
+  box-shadow: 0 0 0 1px rgba(212,255,50,0.2), 0 8px 32px rgba(212,255,50,0.3);
+}
