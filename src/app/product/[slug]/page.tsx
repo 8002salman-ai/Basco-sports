@@ -1,10 +1,11 @@
 "use client";
-export const dynamic = 'force-dynamic';
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { products, reviews } from "@/data/products";
+
+export const runtime = 'edge';
 import { formatPrice, discountPercent, cn } from "@/lib/utils";
 import { Heart, Minus, Plus, Truck, ShieldCheck, RotateCcw, Star, ChevronDown } from "lucide-react";
 import { useCart } from "@/components/cart/CartContext";

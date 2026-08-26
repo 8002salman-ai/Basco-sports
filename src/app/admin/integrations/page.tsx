@@ -11,13 +11,13 @@ function maskValue(value: string | null, visibleStart = 4, visibleEnd = 3): stri
   return `${value.slice(0, visibleStart)}••••${value.slice(-visibleEnd)} (masked)`;
 }
 
-export default function AdminIntegrationsPage() {
+export default async function AdminIntegrationsPage() {
   const serverEnv = getServerEnv();
   const clientEnv = getClientEnv();
   const adminConfigured = isAdminConfigured(serverEnv);
   const cookieStore = cookies();
   const token = cookieStore.get(ADMIN_SESSION_COOKIE)?.value;
-  const session = token ? verifySessionToken(token) : null;
+  const session = token ? await verifySessionToken(token) : null;
   const isAuthenticated = !!session || !adminConfigured;
 
   if (!isAuthenticated) {

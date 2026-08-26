@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerEnv, isAdminConfigured } from '@/lib/env';
-import { verifyPasswordScrypt, isScryptHashFormat, createSessionToken, ADMIN_SESSION_COOKIE, ADMIN_SESSION_MAX_AGE } from '@/lib/admin-auth';
+import { verifyAdminPassword, isPbkdf2HashFormat, createSessionToken, ADMIN_SESSION_COOKIE, ADMIN_SESSION_MAX_AGE } from '@/lib/admin-auth';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'edge';
 
 export async function POST(req: NextRequest) {
   const serverEnv = getServerEnv();
@@ -34,24 +35,24 @@ export async function POST(req: NextRequest) {
 
   const storedHash = serverEnv.ADMIN_PASSWORD_HASH!;
 
-  // Security: only scrypt$N$r$p$salt$dk format accepted – SHA-256/bcrypt removed
-  if (!isScryptHashFormat(storedHash)) {
+  // Security: only pbkdf2$iterations$saltBase64$derivedKeyBase64 accepted – SHA-256/bcrypt/plaintext rejected
+  if (!isPbkdf2HashFormat(storedHash)) {
     return NextResponse.json(
       {
         ok: false,
-        error: 'Admin password hash misconfigured. ADMIN_PASSWORD_HASH must be in format scrypt$N$r$p$saltBase64$derivedKeyBase64. Generate with: node -e "const c=require(\'crypto\'); const salt=c.randomBytes(16); c.scrypt(\'YourStrongPassword\',salt,64,{N:16384,r:8,p:1},(e,k)=>{console.log(`scrypt$16384$8$1$${salt.toString(\'base64\')}$${k.toString(\'base64\')}`)})" – See .env.example and README. No SHA-256, bcrypt, or plaintext accepted.',
+        error: 'Admin password hash misconfigured. ADMIN_PASSWORD_HASH must be pbkdf2$iterations$saltBase64$derivedKeyBase64 (WebCrypto – works on Edge + Node runtimes). Generate with src/lib/admin-auth.ts generatePbkdf2Hash or see README. No SHA-256, bcrypt, or plaintext accepted.',
       },
       { status: 500 }
     );
   }
 
-  const { ok } = await verifyPasswordScrypt(password, storedHash);
+  const { ok } = await verifyAdminPassword(password, storedHash);
 
   if (!ok) {
     return NextResponse.json({ ok: false, error: 'Invalid credentials' }, { status: 401 });
   }
 
-  const token = createSessionToken(email);
+  const token = await createSessionToken(email);
   if (!token) {
     return NextResponse.json({ ok: false, error: 'Failed to create session – missing ADMIN_SESSION_SECRET' }, { status: 500 });
   }

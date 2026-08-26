@@ -1,9 +1,10 @@
 "use client";
-export const dynamic = 'force-dynamic';
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { products, categories } from "@/data/products";
+
+export const runtime = 'edge';
 import { ProductCard } from "@/components/product/ProductCard";
 
 export default function CategoryPage() {

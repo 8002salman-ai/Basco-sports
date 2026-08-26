@@ -37,3 +37,6 @@ yarn-error.log*
 .wrangler
 .dev.vars
 .env*
+
+# freebuff local tooling
+.freebuff/

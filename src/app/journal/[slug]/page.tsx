@@ -1,9 +1,10 @@
 "use client";
-export const dynamic = 'force-dynamic';
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { journalPosts } from "@/data/products";
+
+export const runtime = 'edge';
 
 export default function JournalPostPage() {
   const { slug } = useParams() as { slug: string };

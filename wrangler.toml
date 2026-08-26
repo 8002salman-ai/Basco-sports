@@ -1,0 +1,9 @@
+# Cloudflare Pages – Wrangler configuration
+# Used by Cloudflare Pages git-integration builds (and local `wrangler pages dev`).
+# nodejs_compat is REQUIRED: the Next.js edge runtime (via @cloudflare/next-on-pages)
+# uses node:buffer / node:async_hooks, and the admin auth uses WebCrypto PBKDF2.
+
+name = "basco-sports"
+pages_build_output_dir = ".vercel/output/static"
+compatibility_date = "2026-08-01"
+compatibility_flags = ["nodejs_compat"]

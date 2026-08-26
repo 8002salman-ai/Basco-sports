@@ -11,6 +11,7 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'edge';
 
 function AdminNav({ isConfigured, isAuthenticated }: { isConfigured: boolean; isAuthenticated: boolean }) {
   return (
@@ -44,14 +45,14 @@ function AdminNav({ isConfigured, isAuthenticated }: { isConfigured: boolean; is
   );
 }
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const serverEnv = getServerEnv();
   const clientEnv = getClientEnv();
   const configured = isAdminConfigured(serverEnv);
 
   const cookieStore = cookies();
   const token = cookieStore.get(ADMIN_SESSION_COOKIE)?.value;
-  const session = token ? verifySessionToken(token) : null;
+  const session = token ? await verifySessionToken(token) : null;
   const isAuthenticated = !!session;
 
   // If admin is configured but not authenticated and not on login page, redirect to login

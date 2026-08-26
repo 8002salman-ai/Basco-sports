@@ -6,14 +6,14 @@ import { products } from "@/data/products";
 
 export const dynamic = 'force-dynamic';
 
-export default function AdminOverviewPage() {
+export default async function AdminOverviewPage() {
   const serverEnv = getServerEnv();
   const clientEnv = getClientEnv();
   const adminConfigured = isAdminConfigured(serverEnv);
 
   const cookieStore = cookies();
   const token = cookieStore.get(ADMIN_SESSION_COOKIE)?.value;
-  const session = token ? verifySessionToken(token) : null;
+  const session = token ? await verifySessionToken(token) : null;
   const isAuthenticated = !!session || !adminConfigured; // if not configured, allow dev mock
 
   const gaConfigured = isGaConfigured(clientEnv);

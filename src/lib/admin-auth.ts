@@ -1,29 +1,23 @@
 /**
  * Basco Sports – Admin Authentication Helpers
  * Server-side only. Never import in client components.
- * Requires env-provided ADMIN_EMAIL, ADMIN_PASSWORD_HASH (scrypt), ADMIN_SESSION_SECRET.
- * Security: Only scrypt format is accepted. SHA-256 and bcrypt fallbacks have been removed.
- * Stored format: scrypt$N$r$p$saltBase64$derivedKeyBase64
- *   N: cost parameter (e.g., 16384), power of two
- *   r: block size (e.g., 8)
- *   p: parallelization (e.g., 1)
- *   saltBase64: random salt, base64 encoded (16+ bytes recommended)
- *   derivedKeyBase64: scrypt derived key, base64 encoded (64 bytes recommended)
- * Uses Node's built-in crypto.scrypt + timingSafeEqual – no external deps.
+ * Requires env-provided ADMIN_EMAIL, ADMIN_PASSWORD_HASH, ADMIN_SESSION_SECRET.
+ *
+ * Password hash format (WebCrypto – works on Edge AND Node runtimes):
+ *   pbkdf2$iterations$saltBase64$derivedKeyBase64
+ *
+ * Session cookies: HMAC-SHA256 signed payload (WebCrypto), httpOnly, 8h expiry.
+ * No node:crypto / Buffer imports – this module bundles safely for the Edge Runtime.
  */
 
-import crypto from 'crypto';
 import { getServerEnv, isAdminConfigured } from './env';
 
 const SESSION_COOKIE = 'basco_admin_session';
 const SESSION_MAX_AGE = 60 * 60 * 8; // 8 hours
 
-// Recommended strong parameters
-export const SCRYPT_RECOMMENDED = {
-  N: 16384, // 2^14
-  r: 8,
-  p: 1,
-  dkLen: 64,
+export const PBKDF2_RECOMMENDED = {
+  iterations: 600_000,
+  dkLen: 32,
   saltLen: 16,
 };
 
@@ -48,144 +42,141 @@ export function getAdminConfigStatus() {
   };
 }
 
-/**
- * Check if string matches scrypt$N$r$p$saltBase64$derivedKeyBase64
- */
-export function isScryptHashFormat(hash: string): boolean {
+// ---------------------------------------------------------------------------
+// Base64 helpers – no Buffer (Edge-safe)
+// ---------------------------------------------------------------------------
+
+export function bytesToB64(bytes: Uint8Array): string {
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+
+export function b64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+function bytesToB64Url(bytes: Uint8Array): string {
+  return bytesToB64(bytes).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function b64UrlToBytes(b64url: string): Uint8Array {
+  let b64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
+  while (b64.length % 4) b64 += '=';
+  return b64ToBytes(b64);
+}
+
+function timingSafeEqualBytes(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
+
+// ---------------------------------------------------------------------------
+// PBKDF2 (WebCrypto – Edge + Node)
+// Format: pbkdf2$iterations$saltBase64$derivedKeyBase64
+// ---------------------------------------------------------------------------
+
+export function isPbkdf2HashFormat(hash: string): boolean {
   if (!hash) return false;
-  // Format: scrypt$N$r$p$salt$dk  where salt and dk are base64
   const parts = hash.split('$');
-  if (parts.length !== 6) return false;
-  if (parts[0] !== 'scrypt') return false;
-  const N = Number(parts[1]);
-  const r = Number(parts[2]);
-  const p = Number(parts[3]);
-  const saltB64 = parts[4];
-  const dkB64 = parts[5];
-  if (!Number.isInteger(N) || !Number.isInteger(r) || !Number.isInteger(p)) return false;
-  if (N < 2 || (N & (N - 1)) !== 0) return false; // N must be power of two
-  if (r <= 0 || p <= 0) return false;
-  if (N > 1_000_000 || r > 32 || p > 8) return false; // sanity upper bounds to avoid DoS
-  if (!saltB64 || !dkB64) return false;
-  // Validate base64 decodable
+  if (parts.length !== 4 || parts[0] !== 'pbkdf2') return false;
+  const it = Number(parts[1]);
+  if (!Number.isInteger(it) || it < 100_000 || it > 10_000_000) return false;
   try {
-    const salt = Buffer.from(saltB64, 'base64');
-    const dk = Buffer.from(dkB64, 'base64');
-    if (salt.length < 8) return false;
-    if (dk.length < 32) return false;
+    const salt = b64ToBytes(parts[2]);
+    const dk = b64ToBytes(parts[3]);
+    if (salt.length < 8 || dk.length < 16) return false;
   } catch {
     return false;
   }
   return true;
 }
 
-function parseScryptHash(hash: string): { N: number; r: number; p: number; salt: Buffer; dk: Buffer; dkLen: number } | null {
-  if (!isScryptHashFormat(hash)) return null;
-  const parts = hash.split('$');
-  const N = Number(parts[1]);
-  const r = Number(parts[2]);
-  const p = Number(parts[3]);
-  const salt = Buffer.from(parts[4], 'base64');
-  const dk = Buffer.from(parts[5], 'base64');
-  return { N, r, p, salt, dk, dkLen: dk.length };
-}
-
-/**
- * Verify password against scrypt hash – async, using crypto.scrypt
- */
-export async function verifyPasswordScrypt(providedPassword: string, storedHash: string): Promise<{ ok: boolean; isScryptFormat: boolean }> {
-  if (!storedHash || !providedPassword) {
-    return { ok: false, isScryptFormat: false };
-  }
-  const parsed = parseScryptHash(storedHash);
-  if (!parsed) {
-    return { ok: false, isScryptFormat: false };
-  }
-  const { N, r, p, salt, dk, dkLen } = parsed;
-
+export async function verifyPasswordPbkdf2(providedPassword: string, storedHash: string): Promise<{ ok: boolean; isFormat: boolean }> {
+  if (!isPbkdf2HashFormat(storedHash)) return { ok: false, isFormat: false };
+  const parts = storedHash.split('$');
+  const iterations = Number(parts[1]);
+  const salt = b64ToBytes(parts[2]);
+  const dk = b64ToBytes(parts[3]);
   try {
-    const derived = await new Promise<Buffer>((resolve, reject) => {
-      crypto.scrypt(providedPassword, salt, dkLen, { N, r, p, maxmem: 32 * 1024 * 1024 }, (err, derivedKey) => {
-        if (err) reject(err);
-        else resolve(derivedKey as Buffer);
-      });
-    });
-
-    if (derived.length !== dk.length) {
-      return { ok: false, isScryptFormat: true };
-    }
-    const ok = crypto.timingSafeEqual(derived, dk);
-    return { ok, isScryptFormat: true };
+    const keyMaterial = await crypto.subtle.importKey('raw', new TextEncoder().encode(providedPassword), 'PBKDF2', false, ['deriveBits']);
+    const derived = await crypto.subtle.deriveBits(
+      { name: 'PBKDF2', hash: 'SHA-256', salt: salt.buffer as ArrayBuffer, iterations },
+      keyMaterial,
+      dk.length * 8
+    );
+    const ok = timingSafeEqualBytes(new Uint8Array(derived), dk);
+    return { ok, isFormat: true };
   } catch {
-    return { ok: false, isScryptFormat: true };
+    return { ok: false, isFormat: true };
   }
 }
 
 /**
- * Sync version – uses scryptSync
+ * Verify a password against the stored pbkdf2 hash.
+ * hashFormatOk=false means the stored hash itself is invalid/unsupported.
  */
-export function verifyPasswordScryptSync(providedPassword: string, storedHash: string): { ok: boolean; isScryptFormat: boolean } {
-  if (!storedHash || !providedPassword) {
-    return { ok: false, isScryptFormat: false };
+export async function verifyAdminPassword(providedPassword: string, storedHash: string): Promise<{ ok: boolean; hashFormatOk: boolean }> {
+  if (isPbkdf2HashFormat(storedHash)) {
+    const r = await verifyPasswordPbkdf2(providedPassword, storedHash);
+    return { ok: r.ok, hashFormatOk: r.isFormat };
   }
-  const parsed = parseScryptHash(storedHash);
-  if (!parsed) {
-    return { ok: false, isScryptFormat: false };
-  }
-  const { N, r, p, salt, dk, dkLen } = parsed;
-  try {
-    const derived = crypto.scryptSync(providedPassword, salt, dkLen, { N, r, p, maxmem: 32 * 1024 * 1024 });
-    if (derived.length !== dk.length) {
-      return { ok: false, isScryptFormat: true };
-    }
-    return { ok: crypto.timingSafeEqual(derived, dk), isScryptFormat: true };
-  } catch {
-    return { ok: false, isScryptFormat: true };
-  }
+  return { ok: false, hashFormatOk: false };
 }
 
 /**
- * Helper to generate a scrypt hash locally (for .env.example / README documentation)
- * Not used in auth flow, only for local generation.
+ * Generate a pbkdf2 hash locally (WebCrypto – works everywhere).
+ * pbkdf2$iterations$saltBase64$derivedKeyBase64
  */
-export function generateScryptHash(password: string, opts?: Partial<typeof SCRYPT_RECOMMENDED>): string {
-  const N = opts?.N ?? SCRYPT_RECOMMENDED.N;
-  const r = opts?.r ?? SCRYPT_RECOMMENDED.r;
-  const p = opts?.p ?? SCRYPT_RECOMMENDED.p;
-  const dkLen = opts?.dkLen ?? SCRYPT_RECOMMENDED.dkLen;
-  const saltLen = opts?.saltLen ?? SCRYPT_RECOMMENDED.saltLen;
-  const salt = crypto.randomBytes(saltLen);
-  const dk = crypto.scryptSync(password, salt, dkLen, { N, r, p, maxmem: 32 * 1024 * 1024 });
-  return `scrypt$${N}$${r}$${p}$${salt.toString('base64')}$${dk.toString('base64')}`;
+export async function generatePbkdf2Hash(password: string, opts?: Partial<typeof PBKDF2_RECOMMENDED>): Promise<string> {
+  const iterations = opts?.iterations ?? PBKDF2_RECOMMENDED.iterations;
+  const dkLen = opts?.dkLen ?? PBKDF2_RECOMMENDED.dkLen;
+  const saltLen = opts?.saltLen ?? PBKDF2_RECOMMENDED.saltLen;
+  const salt = crypto.getRandomValues(new Uint8Array(saltLen));
+  const keyMaterial = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+  const dk = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: salt.buffer as ArrayBuffer, iterations }, keyMaterial, dkLen * 8);
+  return `pbkdf2$${iterations}$${bytesToB64(salt)}$${bytesToB64(new Uint8Array(dk))}`;
 }
 
-export function createSessionToken(email: string): string | null {
+// ---------------------------------------------------------------------------
+// Session tokens – HMAC-SHA256 (WebCrypto, Edge + Node)
+// ---------------------------------------------------------------------------
+
+async function hmacSha256(secret: string, data: string): Promise<string> {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(data));
+  return bytesToB64Url(new Uint8Array(sig));
+}
+
+export async function createSessionToken(email: string): Promise<string | null> {
   const secret = getSecret();
   if (!secret) return null;
   const exp = Math.floor(Date.now() / 1000) + SESSION_MAX_AGE;
   const payload: AdminSessionPayload = { email, exp };
-  const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
-  const signature = crypto.createHmac('sha256', secret).update(payloadB64).digest('base64url');
+  const payloadB64 = bytesToB64Url(new TextEncoder().encode(JSON.stringify(payload)));
+  const signature = await hmacSha256(secret, payloadB64);
   return `${payloadB64}.${signature}`;
 }
 
-export function verifySessionToken(token: string): AdminSessionPayload | null {
+export async function verifySessionToken(token: string): Promise<AdminSessionPayload | null> {
   const secret = getSecret();
   if (!secret || !token) return null;
   const parts = token.split('.');
   if (parts.length !== 2) return null;
   const [payloadB64, signature] = parts;
-  const expectedSig = crypto.createHmac('sha256', secret).update(payloadB64).digest('base64url');
   try {
-    const sigBuf = Buffer.from(signature);
-    const expSigBuf = Buffer.from(expectedSig);
-    if (sigBuf.length !== expSigBuf.length) return null;
-    if (!crypto.timingSafeEqual(sigBuf, expSigBuf)) return null;
+    const expectedSig = await hmacSha256(secret, payloadB64);
+    if (!timingSafeEqualBytes(new TextEncoder().encode(signature), new TextEncoder().encode(expectedSig))) return null;
   } catch {
     return null;
   }
   try {
-    const payloadJson = Buffer.from(payloadB64, 'base64url').toString('utf-8');
+    const payloadJson = new TextDecoder().decode(b64UrlToBytes(payloadB64));
     const payload = JSON.parse(payloadJson) as AdminSessionPayload;
     if (!payload.email || !payload.exp) return null;
     if (payload.exp < Math.floor(Date.now() / 1000)) return null;

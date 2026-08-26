@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ADMIN_SESSION_COOKIE } from '@/lib/admin-auth';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'edge';
 
 export async function POST(_req: NextRequest) {
   const res = NextResponse.json({ ok: true, message: 'Logged out' });
