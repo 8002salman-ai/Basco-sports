@@ -18,6 +18,7 @@ export function UserManagementPanel() {
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [accessDenied, setAccessDenied] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUserRow | null>(null);
 
@@ -38,6 +39,11 @@ export function UserManagementPanel() {
   const loadUsers = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/admin-users');
+      if (res.status === 401) {
+        setAccessDenied(true);
+        setLoading(false);
+        return;
+      }
       const data = await res.json();
       if (data.ok) {
         setUsers(data.data);
@@ -138,6 +144,22 @@ export function UserManagementPanel() {
   const ownerCount = useMemo(() => users.filter(u => u.role === 'owner' && u.is_active).length, [users]);
 
   if (loading) return <div className="py-20 text-center text-[14px] text-obsidian/50">Loading admin users…</div>;
+
+  if (accessDenied) {
+    return (
+      <div className="py-20 text-center">
+        <div className="text-[48px]">🔒</div>
+        <h1 className="mt-4 font-display text-[24px]">Access denied</h1>
+        <p className="mt-2 text-[13px] text-obsidian/60">
+          Only the <span className="font-semibold">👑 Owner</span> can manage team members.
+          Your account role does not have permission to view this page.
+        </p>
+        <a href="/admin" className="mt-6 inline-flex h-10 px-5 rounded-full bg-obsidian text-white text-[13px] items-center">
+          ← Back to overview
+        </a>
+      </div>
+    );
+  }
 
   return (
     <div>
