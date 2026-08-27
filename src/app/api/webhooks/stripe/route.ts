@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getServerEnv } from '@/lib/env';
 import { SupabaseAdapter } from '@/lib/admin/db';
+import { sendOrderConfirmation } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'edge';
@@ -120,5 +121,23 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     console.log(`✅ Order ${orderNumber} saved to DB (Stripe checkout)`);
   } catch (err) {
     console.error(`❌ Failed to save order ${orderNumber}:`, err);
+  }
+
+  // Send confirmation email
+  try {
+    await sendOrderConfirmation({
+      orderNumber,
+      customerEmail: order.customerEmail,
+      items: order.items,
+      subtotal: order.subtotal,
+      discount: order.discount,
+      tax: order.tax,
+      total: order.total,
+      currency: order.currency,
+      coupon: order.coupon,
+      createdAt: order.createdAt,
+    });
+  } catch (err) {
+    console.warn(`⚠️  Email send failed for ${orderNumber}:`, err);
   }
 }

@@ -110,6 +110,24 @@ export default function CheckoutPage() {
           updatedAt: now,
         };
         await getDb().insert("orders", order);
+
+        // Send confirmation email (fire-and-forget)
+        fetch("/api/orders/confirm", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orderNumber: order.orderNumber,
+            customerEmail: email,
+            items: order.items.map(({ name, quantity, price, variantLabel }) => ({ name, quantity, price, variantLabel })),
+            subtotal: order.subtotal,
+            discount: order.discount,
+            tax: order.tax,
+            total: order.total,
+            currency: order.currency,
+            coupon: order.coupon,
+            createdAt: order.createdAt,
+          }),
+        }).catch(() => {}); // Don't block on email
       } catch (err) {
         console.warn("Order persist skipped:", err);
       }
