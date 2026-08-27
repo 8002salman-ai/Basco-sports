@@ -13,7 +13,7 @@ interface DbRequest {
   payload?: any;
 }
 
-const SAFE_TABLES = new Set(['products', 'orders', 'users', 'store_settings', 'admin_users']);
+const SAFE_TABLES = new Set(['products', 'orders', 'users', 'store_settings', 'admin_users', 'product_reviews']);
 
 /**
  * Server-side admin DB proxy.

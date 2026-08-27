@@ -25,6 +25,7 @@ const NAV_SECTIONS: { title?: string; items: NavItem[] }[] = [
     items: [
       { href: '/admin/catalog', label: 'Catalog' },
       { href: '/admin/orders', label: 'Orders' },
+      { href: '/admin/reviews', label: 'Reviews' },
       { href: '/admin/users', label: 'Store Users' },
     ],
   },

@@ -16,6 +16,8 @@ export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancel
 
 export interface AdminOrderItem {
   id: string;
+  /** Catalog product id (present on orders saved after review-system rollout; legacy orders may omit it). */
+  productId?: string;
   name: string;
   variantLabel?: string;
   quantity: number;
@@ -75,3 +77,41 @@ export interface StoreSettings {
 }
 
 export const ORDER_STATUSES: OrderStatus[] = ['pending', 'paid', 'shipped', 'delivered', 'cancelled', 'refunded'];
+
+// ---------------------------------------------------------------------------
+// Product reviews (real customer reviews – FTC-compliant pipeline)
+// ---------------------------------------------------------------------------
+
+export type ReviewStatus = 'pending' | 'approved' | 'rejected';
+
+export interface AdminReview {
+  id: string;
+  productId: string;
+  productSlug?: string;
+  productName?: string;
+  orderId?: string;
+  orderNumber?: string;
+  customerEmail?: string;
+  authorName: string;
+  rating: number;
+  title?: string;
+  body: string;
+  verifiedPurchase: boolean;
+  incentiveDisclosure?: string;
+  status: ReviewStatus;
+  rejectionReason?: string;
+  moderatedAt?: string;
+  moderatedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const REVIEW_STATUSES: ReviewStatus[] = ['pending', 'approved', 'rejected'];
+
+/** Recompute the aggregate rating for a product from its approved reviews. */
+export function aggregateApprovedReviews(reviews: AdminReview[]): { rating: number; reviewCount: number } {
+  const approved = reviews.filter((r) => r.status === 'approved');
+  if (!approved.length) return { rating: 0, reviewCount: 0 };
+  const sum = approved.reduce((acc, r) => acc + (Number(r.rating) || 0), 0);
+  return { rating: Math.round((sum / approved.length) * 10) / 10, reviewCount: approved.length };
+}

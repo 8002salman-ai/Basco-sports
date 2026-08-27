@@ -105,6 +105,7 @@ export default function CheckoutPage() {
             const p = products.find((pp) => pp.id === it.productId);
             return {
               id: `${orderId}-${idx}`,
+              productId: it.productId,
               name: p?.name || it.productId,
               variantLabel: [it.color, it.size].filter(Boolean).join(" / ") || undefined,
               quantity: it.quantity,
