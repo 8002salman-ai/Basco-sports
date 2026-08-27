@@ -266,3 +266,4 @@ See `.env.example` for dummy placeholders. Never commit real secrets, never expo
 - [x] No hardcoded secrets, no email as password, no secret exposure client-side
 
 Built as hardened integrations + administration phase for Basco Sports.
+
