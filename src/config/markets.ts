@@ -214,6 +214,7 @@ export function suggestCountryFromTimeZone(timeZone: string): string | null {
     Chicago: 'US', Denver: 'US', London: 'GB', Dubai: 'AE', Doha: 'QA',
     Riyadh: 'SA', Kuwait: 'KW', Manama: 'BH', Muscat: 'OM', Tokyo: 'JP',
     Singapore: 'SG', 'Kuala Lumpur': 'MY', Sydney: 'AU', Melbourne: 'AU', Auckland: 'NZ',
+    Qatar: 'QA', UAE: 'AE', 'Al Kuwait': 'KW', Bahrain: 'BH',
   };
   return cityToCountry[city] ?? null;
 }

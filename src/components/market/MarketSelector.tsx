@@ -2,21 +2,28 @@
 import React, { useMemo, useState } from "react";
 import { ChevronDown, Search, X, Check, MapPin, XCircle } from "lucide-react";
 import { useMarket } from "./MarketContext";
-import { supportedCountries, currencies, markets } from "@/config/markets";
+import { supportedCountries, currencies, markets, DEFAULT_COUNTRY, DEFAULT_CURRENCY } from "@/config/markets";
 
 export function MarketSuggestionBanner() {
-  const { suggestion, acceptSuggestion, dismissSuggestion, hydrated } = useMarket();
+  const { countryCode, currency, suggestion, acceptSuggestion, dismissSuggestion, hydrated } = useMarket();
   if (!hydrated || !suggestion) return null;
   const market = markets[suggestion];
   if (!market) return null;
+  // "Keep" always refers to the USA / USD default the shopper started on.
+  const defaultMarket = markets[DEFAULT_COUNTRY];
   return (
     <div role="status" className="bg-stone-100 border-b border-stone-200 text-[13px]">
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center gap-3 flex-wrap">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-5 lg:px-6 py-2 flex items-center gap-2.5 flex-wrap">
         <MapPin className="w-4 h-4 shrink-0" />
-        <span>Looks like you’re shopping from {market.countryName} {market.flagEmoji}</span>
-        <button onClick={acceptSuggestion} className="h-7 px-3 rounded-full bg-obsidian text-white text-[12px] font-medium">Continue with {market.countryName}</button>
-        <button onClick={dismissSuggestion} className="h-7 px-3 rounded-full border border-stone-300 text-[12px]">Change country</button>
-        <button onClick={dismissSuggestion} aria-label="Dismiss" className="ml-auto h-7 w-7 rounded-full hover:bg-stone-200 flex items-center justify-center"><XCircle className="w-4 h-4" /></button>
+        <span className="min-w-0 truncate">Looks like you’re shopping from {market.countryName} {market.flagEmoji}</span>
+        <button onClick={acceptSuggestion} className="h-7 px-3 rounded-full bg-obsidian text-white text-[12px] font-medium whitespace-nowrap">
+          Switch to {market.countryName} / {market.currency}
+        </button>
+        <button onClick={dismissSuggestion} className="h-7 px-3 rounded-full border border-stone-300 text-[12px] whitespace-nowrap">
+          Keep {defaultMarket.flagEmoji} {DEFAULT_COUNTRY} / {DEFAULT_CURRENCY}
+        </button>
+        <span className="hidden md:inline text-[11px] text-obsidian/50 whitespace-nowrap">You can change this anytime in the header.</span>
+        <button onClick={dismissSuggestion} aria-label="Dismiss" className="ml-auto h-7 w-7 shrink-0 rounded-full hover:bg-stone-200 flex items-center justify-center"><XCircle className="w-4 h-4" /></button>
       </div>
     </div>
   );
