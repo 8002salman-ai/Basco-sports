@@ -57,6 +57,20 @@ export interface StoreSettings {
   currency: string;
   announcement?: string;
   paymentProvider: string;
+  // Cloudflare integration
+  cloudflareApiToken?: string;
+  cloudflareAccountId?: string;
+  cloudflareR2Endpoint?: string;
+  cloudflareR2AccessKeyId?: string;
+  cloudflareR2SecretAccessKey?: string;
+  cloudflareR2BucketName?: string;
+  cloudflarePagesProject?: string;
+  // Supabase integration
+  supabaseProjectUrl?: string;
+  supabaseAnonKey?: string;
+  supabaseServiceRoleKey?: string;
+  supabaseDbPassword?: string;
+  supabaseProjectRef?: string;
   updatedAt: string;
 }
 
