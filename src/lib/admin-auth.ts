@@ -1,7 +1,7 @@
 /**
  * Basco Sports – Admin Authentication Helpers
  * Server-side only. Never import in client components.
- * Requires env-provided ADMIN_EMAIL, ADMIN_PASSWORD_HASH, ADMIN_SESSION_SECRET.
+ * Supports multi-user DB-based auth (admin_users table) with roles.
  *
  * Password hash format (WebCrypto – works on Edge AND Node runtimes):
  *   pbkdf2$iterations$saltBase64$derivedKeyBase64
@@ -21,9 +21,38 @@ export const PBKDF2_RECOMMENDED = {
   saltLen: 16,
 };
 
+export type AdminRole = 'owner' | 'admin';
+
 export interface AdminSessionPayload {
   email: string;
+  name: string;
+  role: AdminRole;
   exp: number;
+}
+
+/** Permissions for each role */
+export const ROLE_PERMISSIONS: Record<AdminRole, string[]> = {
+  owner: [
+    'catalog.view', 'catalog.edit', 'catalog.delete',
+    'orders.view', 'orders.edit', 'orders.delete',
+    'users.view', 'users.edit', 'users.block',
+    'admin_users.view', 'admin_users.add', 'admin_users.edit', 'admin_users.delete',
+    'integrations.view', 'integrations.edit',
+    'settings.view', 'settings.edit',
+    'hermes.view', 'hermes.edit',
+  ],
+  admin: [
+    'catalog.view', 'catalog.edit',
+    'orders.view', 'orders.edit',
+    'users.view',
+    'integrations.view',
+    'settings.view',
+    'hermes.view',
+  ],
+};
+
+export function hasPermission(role: AdminRole, permission: string): boolean {
+  return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
 }
 
 function getSecret(): string | null {
@@ -35,8 +64,6 @@ export function getAdminConfigStatus() {
   const env = getServerEnv();
   return {
     configured: isAdminConfigured(env),
-    hasEmail: !!env.ADMIN_EMAIL,
-    hasPasswordHash: !!env.ADMIN_PASSWORD_HASH,
     hasSessionSecret: !!env.ADMIN_SESSION_SECRET,
     email: env.ADMIN_EMAIL,
   };
@@ -153,11 +180,11 @@ async function hmacSha256(secret: string, data: string): Promise<string> {
   return bytesToB64Url(new Uint8Array(sig));
 }
 
-export async function createSessionToken(email: string): Promise<string | null> {
+export async function createSessionToken(email: string, name: string, role: AdminRole): Promise<string | null> {
   const secret = getSecret();
   if (!secret) return null;
   const exp = Math.floor(Date.now() / 1000) + SESSION_MAX_AGE;
-  const payload: AdminSessionPayload = { email, exp };
+  const payload: AdminSessionPayload = { email, name, role, exp };
   const payloadB64 = bytesToB64Url(new TextEncoder().encode(JSON.stringify(payload)));
   const signature = await hmacSha256(secret, payloadB64);
   return `${payloadB64}.${signature}`;
@@ -180,8 +207,11 @@ export async function verifySessionToken(token: string): Promise<AdminSessionPay
     const payload = JSON.parse(payloadJson) as AdminSessionPayload;
     if (!payload.email || !payload.exp) return null;
     if (payload.exp < Math.floor(Date.now() / 1000)) return null;
-    const env = getServerEnv();
-    if (env.ADMIN_EMAIL && payload.email !== env.ADMIN_EMAIL) return null;
+    // Legacy single-user check (fallback for old tokens without role)
+    if (!payload.role) {
+      const env = getServerEnv();
+      if (env.ADMIN_EMAIL && payload.email !== env.ADMIN_EMAIL) return null;
+    }
     return payload;
   } catch {
     return null;

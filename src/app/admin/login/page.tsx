@@ -10,11 +10,13 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const router = useRouter();
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setSuccess("");
     setLoading(true);
     try {
       const res = await fetch('/api/admin/login', {
@@ -28,8 +30,11 @@ export default function AdminLoginPage() {
         setLoading(false);
         return;
       }
-      router.push('/admin');
-      router.refresh();
+      setSuccess(`Logged in as ${data.role}!`);
+      setTimeout(() => {
+        router.push('/admin');
+        router.refresh();
+      }, 500);
     } catch (err: any) {
       setError(err.message || 'Network error');
       setLoading(false);
@@ -40,36 +45,47 @@ export default function AdminLoginPage() {
     <div className="max-w-[480px] mx-auto py-12">
       <div className="bg-white rounded-[24px] border border-stone-200 p-8">
         <div className="w-10 h-10 rounded-xl bg-obsidian text-white flex items-center justify-center font-black">B</div>
-        <h1 className="mt-6 font-display text-[28px] leading-none">Admin login</h1>
+        <h1 className="mt-6 font-display text-[28px] leading-none">Admin Login</h1>
         <p className="mt-3 text-[13px] text-obsidian/60">
-          Requires server env: <code>ADMIN_EMAIL</code>, <code>ADMIN_PASSWORD_HASH</code> (pbkdf2 format <code>pbkdf2$iterations$salt$dk</code>), <code>ADMIN_SESSION_SECRET</code>.
-          No credentials are hardcoded. If env not set, this page returns 503 and admin shows dev-only mock.
+          Sign in with your admin account credentials.
         </p>
-
-        <div className="mt-6 p-4 rounded-xl bg-stone-50 border text-[12px] leading-relaxed">
-          <div className="font-semibold">Security notes – pbkdf2 (WebCrypto)</div>
-          <ul className="mt-2 list-disc pl-5 space-y-1 opacity-70">
-            <li>Never use email as password, never hardcode secrets.</li>
-            <li>Password hash must be pbkdf2: <code>pbkdf2$600000$saltBase64$dkBase64</code> (WebCrypto PBKDF2, SHA-256, 600k iterations, 16-byte salt, 64-byte derived key). Runs on Edge + Node. scrypt, SHA-256 and bcrypt are rejected.</li>
-            <li>Session cookie is httpOnly, HMAC SHA256 signed with ADMIN_SESSION_SECRET, 8h expiry, Secure in production.</li>
-            <li>See .env.example and README Admin Hardening for local generation command (no network, no secret logging).</li>
-          </ul>
-        </div>
 
         <form onSubmit={onSubmit} className="mt-8 space-y-4">
           <div>
-            <label className="text-[12px] opacity-60">Admin email (env ADMIN_EMAIL)</label>
-            <input value={email} onChange={e => setEmail(e.target.value)} required type="email" placeholder="admin@example.com" className="mt-1 w-full h-11 px-4 rounded-full border border-stone-200" />
+            <label className="text-[12px] opacity-60">Email address</label>
+            <input
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
+              type="email"
+              placeholder="admin@example.com"
+              className="mt-1 w-full h-11 px-4 rounded-full border border-stone-200 focus:outline-none focus:ring-2 focus:ring-lime-300"
+            />
           </div>
           <div>
-            <label className="text-[12px] opacity-60">Password (verified against ADMIN_PASSWORD_HASH)</label>
-            <input value={password} onChange={e => setPassword(e.target.value)} required type="password" placeholder="••••••••" className="mt-1 w-full h-11 px-4 rounded-full border border-stone-200" />
+            <label className="text-[12px] opacity-60">Password</label>
+            <input
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+              type="password"
+              placeholder="••••••••"
+              className="mt-1 w-full h-11 px-4 rounded-full border border-stone-200 focus:outline-none focus:ring-2 focus:ring-lime-300"
+            />
           </div>
-          {error && <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-[13px] text-red-700">{error}</div>}
-          <button type="submit" disabled={loading} className="w-full h-12 rounded-full bg-obsidian text-white font-semibold disabled:opacity-50">
-            {loading ? 'Authenticating…' : 'Log in – server verified'}
+          {error && (
+            <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-[13px] text-red-700">{error}</div>
+          )}
+          {success && (
+            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-[13px] text-emerald-700">{success}</div>
+          )}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full h-12 rounded-full bg-obsidian text-white font-semibold disabled:opacity-50 hover:bg-obsidian/90 transition-colors"
+          >
+            {loading ? 'Signing in…' : 'Sign in'}
           </button>
-          <div className="text-[11px] text-center opacity-60">No secret values are displayed in UI. Check server logs for 503 if env not configured.</div>
         </form>
 
         <div className="mt-6 flex gap-3 text-[12px]">
