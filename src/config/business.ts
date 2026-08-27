@@ -17,19 +17,21 @@ export type BusinessConfig = {
 };
 
 /**
- * Public business details are intentionally null until the owner verifies them.
- * Never replace these nulls with guessed or demo identity data.
+ * Public business details. Fields below were provided by the owner on 2026-08-27;
+ * anything still null is a confirmed LAUNCH_BLOCKER and must not be guessed.
+ * The Irving TX address is recorded as provided but is NOT a complete verified
+ * street address yet – treat as pending confirmation for legal/customs use.
  */
 export const business: BusinessConfig = {
-  legalBusinessName: null,
+  legalBusinessName: null, // registered legal entity name still required from owner
   tradingName: "Basco Sports",
   companyNumber: null,
-  registeredJurisdiction: null,
-  businessAddress: null,
-  returnAddress: null,
-  supportEmail: null,
-  privacyEmail: null,
-  supportPhone: null,
+  registeredJurisdiction: "Texas, USA (entity registration to be confirmed)",
+  businessAddress: "Dallas Court Yard, Irving, Texas, USA (full street address to be confirmed by owner)",
+  returnAddress: null, // return address still required from owner
+  supportEmail: "basco.pk@gmail.com",
+  privacyEmail: "basco.pk@gmail.com",
+  supportPhone: "+1 (440) 941-8002",
   vatNumber: null,
   euResponsiblePerson: {
     name: null,
