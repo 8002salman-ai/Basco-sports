@@ -5,6 +5,7 @@ import { Search, Heart, ShoppingBag, User, Menu, X } from "lucide-react";
 import { useCart } from "@/components/cart/CartContext";
 import { categories } from "@/data/products";
 import { useRouter } from "next/navigation";
+import { MarketSelector } from "@/components/market/MarketSelector";
 
 export function Header() {
   const { cartCount, wishlist, setCartOpen } = useCart();
@@ -62,6 +63,7 @@ export function Header() {
 
           {/* Actions */}
           <div className="flex items-center gap-1 lg:gap-2">
+            <div className="hidden md:block mr-1"><MarketSelector /></div>
             <Link href="/account" className="hidden sm:flex h-10 w-10 items-center justify-center rounded-full hover:bg-stone-100 transition-colors" aria-label="Account">
               <User className="w-5 h-5" />
             </Link>

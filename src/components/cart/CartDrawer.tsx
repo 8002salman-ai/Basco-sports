@@ -7,16 +7,24 @@ import { products } from "@/data/products";
 import { formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { useMarket } from "@/components/market/MarketContext";
+import { quoteShipping, shippingUnavailableMessage } from "@/lib/shipping";
+import { taxSummaryFor } from "@/lib/tax";
+import { convertForDisplay } from "@/lib/currency";
 
 export function CartDrawer() {
   const { items, cartOpen, setCartOpen, updateQty, removeFromCart, subtotal, coupon, discount, applyCoupon, removeCoupon } = useCart();
+  const { countryCode, currency } = useMarket();
   const [couponInput, setCouponInput] = useState("");
   const [couponMsg, setCouponMsg] = useState("");
 
-  const shipping = subtotal > 100 || subtotal === 0 ? 0 : 9.5;
+  const quotes = quoteShipping(countryCode, subtotal);
+  const standard = quotes.find((q) => q.id === "STANDARD_INTERNATIONAL");
+  const shipping = standard ? standard.priceUSD : subtotal === 0 ? 0 : null; // null = unavailable
   const discountAmount = coupon ? (subtotal * discount) / 100 : 0;
-  const tax = (subtotal - discountAmount) * 0.08;
-  const total = subtotal - discountAmount + shipping + tax;
+  const taxSummary = taxSummaryFor(countryCode, subtotal - discountAmount);
+  const total = shipping === null ? null : subtotal - discountAmount + shipping + (taxSummary.taxLineAmountUSD ?? 0);
+  const show = (usd: number) => convertForDisplay(usd, currency);
 
   if (!cartOpen) return null;
 
@@ -101,14 +109,15 @@ export function CartDrawer() {
 
             <div className="border-t border-stone-200 p-6 space-y-3 bg-stone-50">
               <div className="space-y-2 text-[14px]">
-                <div className="flex justify-between"><span className="text-obsidian/60">Subtotal</span><span className="font-medium">{formatPrice(subtotal)}</span></div>
-                {coupon && <div className="flex justify-between text-lime-400"><span>Discount ({discount}%)</span><span>-{formatPrice(discountAmount)}</span></div>}
-                <div className="flex justify-between"><span className="text-obsidian/60">Shipping</span><span className="font-medium">{shipping === 0 ? "Free" : formatPrice(shipping)}</span></div>
-                <div className="flex justify-between"><span className="text-obsidian/60">Tax (est.)</span><span className="font-medium">{formatPrice(tax)}</span></div>
+                <div className="flex justify-between"><span className="text-obsidian/60">Subtotal</span><span className="font-medium">{show(subtotal)}</span></div>
+                {coupon && <div className="flex justify-between text-lime-400"><span>Discount ({discount}%)</span><span>-{show(discountAmount)}</span></div>}
+                <div className="flex justify-between"><span className="text-obsidian/60">Shipping</span><span className="font-medium">{shipping === null ? shippingUnavailableMessage(countryCode) : shipping === 0 ? "Free" : show(shipping)}</span></div>
+                {taxSummary.taxLineNote && <p className="text-[11px] text-obsidian/50 leading-relaxed">{taxSummary.taxLineNote}</p>}
+                {taxSummary.dutiesDisclosure && <p className="text-[11px] text-obsidian/50 leading-relaxed">{taxSummary.dutiesDisclosure}</p>}
                 <div className="h-px bg-stone-200 my-2" />
-                <div className="flex justify-between text-[18px] font-semibold"><span>Total</span><span>{formatPrice(total)}</span></div>
+                <div className="flex justify-between text-[18px] font-semibold"><span>Total</span><span>{total === null ? "—" : show(total)}</span></div>
               </div>
-              <p className="text-[11px] text-obsidian/50">Demo checkout – no real payment will be taken. Shipping calculated at next step.</p>
+              <p className="text-[11px] text-obsidian/50">Demo checkout – no real payment will be taken. Final amounts confirmed at checkout before payment.</p>
               <div className="grid grid-cols-2 gap-3">
                 <Link href="/cart" onClick={() => setCartOpen(false)} className="h-12 rounded-full border border-obsidian/15 flex items-center justify-center text-[14px] font-medium hover:bg-white transition-colors">View cart</Link>
                 <Link href="/checkout" onClick={() => setCartOpen(false)} className="h-12 rounded-full bg-obsidian text-white flex items-center justify-center text-[14px] font-semibold hover:bg-obsidian-700 transition-colors">Checkout</Link>

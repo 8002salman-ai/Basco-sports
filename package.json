@@ -7,21 +7,22 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "pages:build": "next-on-pages"
+    "pages:build": "next-on-pages",
+    "launch-check": "node scripts/launch-check.mjs"
   },
   "dependencies": {
     "@react-email/render": "^2.1.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.400.0",
-    "next": "14.2.5",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
+    "next": "^14.2.35",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "resend": "^6.24.0",
     "stripe": "^22.6.0",
     "tailwind-merge": "^2.3.0"
   },
   "devDependencies": {
-    "@cloudflare/next-on-pages": "^1.13.15",
+    "@cloudflare/next-on-pages": "^1.13.16",
     "@types/node": "^20.12.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",

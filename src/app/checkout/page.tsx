@@ -10,9 +10,15 @@ import { getDb } from "@/lib/admin/db";
 import type { AdminOrder } from "@/lib/admin/types";
 import { Lock, ShieldCheck, CreditCard, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useMarket } from "@/components/market/MarketContext";
+import { supportedCountries } from "@/config/markets";
+import { quoteShipping, shippingUnavailableMessage } from "@/lib/shipping";
+import { taxSummaryFor } from "@/lib/tax";
+import { convertForDisplay } from "@/lib/currency";
 
 export default function CheckoutPage() {
   const { items, subtotal, coupon, discount, clearCart } = useCart();
+  const { countryCode, currency, setCountry } = useMarket();
   const [step, setStep] = useState<"form" | "processing" | "success">("form");
   const [email, setEmail] = useState("");
   const [formError, setFormError] = useState("");
@@ -25,10 +31,16 @@ export default function CheckoutPage() {
       .catch(() => setPaymentMode("demo"));
   }, []);
 
-  const shipping = subtotal > 100 || subtotal === 0 ? 0 : 9.5;
+  // Market-aware totals. Nothing here is a hidden fee: shipping choices and
+  // duties/taxes disclosures appear BEFORE the payment button.
+  const quotes = quoteShipping(countryCode, subtotal);
+  const shippingOption = quotes.find((q) => q.id === "STANDARD_INTERNATIONAL");
+  const shipping = quotes.length === 0 ? null : (shippingOption?.priceUSD ?? 0);
   const discountAmt = coupon ? (subtotal * discount) / 100 : 0;
-  const tax = (subtotal - discountAmt) * 0.08;
-  const total = subtotal - discountAmt + shipping + tax;
+  const taxSummary = taxSummaryFor(countryCode, subtotal - discountAmt);
+  const tax = taxSummary.taxLineAmountUSD ?? 0;
+  const total = shipping === null ? null : subtotal - discountAmt + shipping + tax;
+  const show = (usd: number) => convertForDisplay(usd, currency);
 
   // ── Stripe Checkout ──
   const handleStripeCheckout = async () => {
@@ -102,7 +114,7 @@ export default function CheckoutPage() {
           subtotal,
           discount: discountAmt,
           tax,
-          total,
+          total: total ?? 0,
           currency: "usd",
           status: "paid",
           coupon: coupon || undefined,
@@ -187,21 +199,40 @@ export default function CheckoutPage() {
               <div><label className="text-[12px] opacity-60">Address</label><input placeholder="123 Basco Street" className="mt-1 w-full h-11 px-4 rounded-full border border-stone-200" /></div>
               <div className="grid sm:grid-cols-3 gap-4">
                 <input placeholder="City" className="h-11 px-4 rounded-full border border-stone-200" />
-                <input placeholder="State / ZIP" className="h-11 px-4 rounded-full border border-stone-200" />
-                <select className="h-11 px-4 rounded-full border border-stone-200 bg-white"><option>United States</option><option>United Kingdom</option><option>Pakistan</option></select>
+                <input placeholder="State / Province / Region (if used)" className="h-11 px-4 rounded-full border border-stone-200" />
+                <select
+                  value={countryCode}
+                  onChange={(e) => setCountry(e.target.value)}
+                  aria-label="Shipping country"
+                  className="h-11 px-4 rounded-full border border-stone-200 bg-white"
+                >
+                  {supportedCountries.map((m) => (
+                    <option key={m.countryCode} value={m.countryCode}>{m.flagEmoji} {m.countryName}{m.checkoutEnabled ? "" : " (browsing only)"}</option>
+                  ))}
+                </select>
               </div>
+              <div><label className="text-[12px] opacity-60">Postal / ZIP code (if used)</label><input placeholder="Postal code" className="mt-1 w-full h-11 px-4 rounded-full border border-stone-200" /></div>
             </div>
           </div>
 
           <div className="bg-white rounded-[24px] border border-stone-200 p-6 lg:p-8">
             <h3 className="font-semibold flex items-center gap-2"><span className="w-6 h-6 rounded-full bg-obsidian text-white text-[12px] flex items-center justify-center">2</span> Shipping method</h3>
             <div className="mt-6 space-y-3">
-              <label className="flex items-center justify-between p-4 rounded-xl border-2 border-obsidian bg-stone-50 cursor-pointer">
-                <span className="flex items-center gap-3"><input type="radio" defaultChecked name="ship" /><Truck className="w-4 h-4" /> Standard (2-4 days)</span><span className="font-semibold">{shipping === 0 ? "Free" : formatPrice(shipping)}</span>
-              </label>
-              <label className="flex items-center justify-between p-4 rounded-xl border border-stone-200 cursor-pointer opacity-70">
-                <span className="flex items-center gap-3"><input type="radio" name="ship" /> Express (1-2 days)</span><span className="font-semibold">$18.00</span>
-              </label>
+              {quotes.length === 0 && (
+                <p className="p-4 rounded-xl bg-sale-light text-sale text-[13px]">{shippingUnavailableMessage(countryCode)}</p>
+              )}
+              {quotes.map((q, i) => (
+                <label key={q.id} className={`flex items-center justify-between p-4 rounded-xl cursor-pointer ${i === 0 ? "border-2 border-obsidian bg-stone-50" : "border border-stone-200"}`}>
+                  <span className="flex items-center gap-3"><input type="radio" defaultChecked={i === 0} name="ship" /><Truck className="w-4 h-4" />
+                    <span><span className="block font-medium">{q.label}</span><span className="block text-[12px] opacity-60">{q.description}</span>
+                    <span className="block text-[12px] opacity-80">{q.estimateText} • Tracked</span></span>
+                  </span>
+                  <span className="font-semibold">{q.priceUSD === 0 ? "Free" : show(q.priceUSD)}</span>
+                </label>
+              ))}
+              {taxSummary.dutiesDisclosure && (
+                <p className="p-4 rounded-xl bg-stone-50 border border-stone-200 text-[12px] leading-relaxed">{taxSummary.dutiesDisclosure}</p>
+              )}
             </div>
           </div>
 
@@ -227,12 +258,15 @@ export default function CheckoutPage() {
               </>
             )}
             {formError && <div className="mt-4 p-3 rounded-xl bg-sale-light text-sale text-[13px]">{formError}</div>}
-            <Button type="submit" size="lg" className="w-full mt-6" disabled={step === "processing"}>
+            <Button type="submit" size="lg" className="w-full mt-6" disabled={step === "processing" || shipping === null}>
               {step === "processing"
                 ? (paymentMode === "stripe" ? "Redirecting to Stripe…" : "Processing demo payment…")
-                : `Pay ${formatPrice(total)}${paymentMode === "stripe" ? "" : " – Demo, no charge"}`}
+                : `Pay now ${total === null ? "" : show(total)}${paymentMode === "stripe" ? "" : " – Demo, no charge"}`}
             </Button>
-            <p className="mt-3 text-[11px] text-center text-obsidian/50">By placing an order you agree to Terms & Privacy.</p>
+            <p className="mt-3 text-[11px] text-center text-obsidian/50">
+              By placing this order you agree to our <Link href="/terms" className="underline">Terms</Link>, <Link href="/privacy" className="underline">Privacy Policy</Link> and <Link href="/returns" className="underline">Returns Policy</Link>.
+              Estimated delivery and your destination are shown above. Demo checkout – no real payment is taken.
+            </p>
           </div>
         </form>
 
@@ -251,11 +285,12 @@ export default function CheckoutPage() {
             })}
           </div>
           <div className="mt-6 space-y-2 text-[14px] border-t pt-6">
-            <div className="flex justify-between"><span className="opacity-60">Subtotal</span><span>{formatPrice(subtotal)}</span></div>
-            {coupon && <div className="flex justify-between text-lime-600"><span>Discount {coupon}</span><span>-{formatPrice(discountAmt)}</span></div>}
-            <div className="flex justify-between"><span className="opacity-60">Shipping</span><span>{shipping === 0 ? "Free" : formatPrice(shipping)}</span></div>
-            <div className="flex justify-between"><span className="opacity-60">Tax</span><span>{formatPrice(tax)}</span></div>
-            <div className="flex justify-between text-[18px] font-semibold pt-2 border-t"><span>Total</span><span>{formatPrice(total)}</span></div>
+            <div className="flex justify-between"><span className="opacity-60">Subtotal</span><span>{show(subtotal)}</span></div>
+            {coupon && <div className="flex justify-between text-lime-600"><span>Discount {coupon}</span><span>-{show(discountAmt)}</span></div>}
+            <div className="flex justify-between"><span className="opacity-60">Shipping</span><span>{shipping === null ? shippingUnavailableMessage(countryCode) : shipping === 0 ? "Free" : show(shipping)}</span></div>
+            {taxSummary.taxLineLabel && <div className="flex justify-between"><span className="opacity-60">{taxSummary.taxLineLabel}</span><span>{show(tax)}</span></div>}
+            {taxSummary.dutiesDisclosure && <p className="text-[11px] text-obsidian/50 leading-relaxed">{taxSummary.dutiesDisclosure}</p>}
+            <div className="flex justify-between text-[18px] font-semibold pt-2 border-t"><span>Total</span><span>{total === null ? "—" : show(total)}</span></div>
           </div>
           {paymentMode === "stripe" && (
             <div className="mt-6 p-3 rounded-xl bg-stone-50 border text-[11px] leading-relaxed">

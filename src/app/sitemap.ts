@@ -1,6 +1,8 @@
 import { MetadataRoute } from "next";
 import { products, categories, journalPosts } from "@/data/products";
 
+export const runtime = 'edge';
+
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = process.env.NEXT_PUBLIC_SITE_URL || "https://basco-sports.example.com";
   const now = new Date();

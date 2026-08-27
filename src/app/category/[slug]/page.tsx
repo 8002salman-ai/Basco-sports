@@ -25,7 +25,7 @@ export default function CategoryPage() {
           <div className="text-white">
             <div className="text-[11px] tracking-[0.2em] uppercase opacity-60">Collection • {list.length} products</div>
             <h1 className="mt-3 font-display text-[44px] lg:text-[72px] leading-[0.9] tracking-tight">{category.name}</h1>
-            <p className="mt-4 max-w-[560px] text-white/70 text-[16px] leading-relaxed">{category.description} Premium curation, performance tested. Demo store with full cart and wishlist functionality.</p>
+            <p className="mt-4 max-w-[560px] text-white/70 text-[16px] leading-relaxed">{category.description} Premium curation. Demo store with full cart and wishlist functionality.</p>
             <div className="mt-6 flex gap-3">
               <span className="px-4 py-2 rounded-full bg-white text-obsidian text-[13px] font-medium">Free shipping over $100</span>
               <span className="px-4 py-2 rounded-full bg-white/10 backdrop-blur border border-white/15 text-white text-[13px]">30-day returns</span>

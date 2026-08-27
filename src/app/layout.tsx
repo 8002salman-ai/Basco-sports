@@ -8,6 +8,8 @@ import { CartDrawer } from "@/components/cart/CartDrawer";
 import { ConsentProvider } from "@/components/consent/ConsentContext";
 import { CookieConsentBanner, CookiePreferencesModal } from "@/components/consent/CookieConsentBanner";
 import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
+import { MarketProvider } from "@/components/market/MarketContext";
+import { MarketSuggestionBanner } from "@/components/market/MarketSelector";
 import { getServerEnv } from "@/lib/env";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -19,11 +21,11 @@ export async function generateMetadata(): Promise<Metadata> {
       default: "Basco Sports – Premium Sports Gear & Apparel",
       template: "%s | Basco Sports",
     },
-    description: "Premium sports gear and apparel – football, cricket, basketball, running, gym & outdoor. Editorial curation, performance tested. Demo store.",
+    description: "Premium sports gear and apparel – football, cricket, basketball, running, gym & outdoor. Editorial curation, worldwide delivery. Demo store.",
     metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://basco-sports.example.com"),
     openGraph: {
       title: "Basco Sports – Premium Sports Gear",
-      description: "Editorial curation, performance tested. Football, cricket, basketball, running, gym & outdoor.",
+      description: "Editorial curation, worldwide delivery. Football, cricket, basketball, running, gym & outdoor.",
       type: "website",
       siteName: "Basco Sports",
       images: [{ url: "/og.jpg", width: 1200, height: 630, alt: "Basco Sports" }],
@@ -31,7 +33,7 @@ export async function generateMetadata(): Promise<Metadata> {
     twitter: {
       card: "summary_large_image",
       title: "Basco Sports – Premium Sports Gear",
-      description: "Editorial curation, performance tested.",
+      description: "Editorial curation, worldwide delivery.",
     },
     robots: { index: true, follow: true },
     icons: { icon: "/favicon.ico" },
@@ -45,16 +47,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className="min-h-screen flex flex-col">
         <ConsentProvider>
-          <CartProvider>
-            <AnnouncementBar />
-            <Header />
-            <CartDrawer />
-            <main className="flex-1">{children}</main>
-            <Footer />
-            <CookieConsentBanner />
-            <CookiePreferencesModal />
-            <GoogleAnalytics />
-          </CartProvider>
+          <MarketProvider>
+            <CartProvider>
+              <MarketSuggestionBanner />
+              <AnnouncementBar />
+              <Header />
+              <CartDrawer />
+              <main className="flex-1">{children}</main>
+              <Footer />
+              <CookieConsentBanner />
+              <CookiePreferencesModal />
+              <GoogleAnalytics />
+            </CartProvider>
+          </MarketProvider>
         </ConsentProvider>
       </body>
     </html>

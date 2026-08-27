@@ -6,9 +6,12 @@ import { Product } from "@/lib/types";
 import { formatPrice, discountPercent, cn } from "@/lib/utils";
 import { useCart } from "@/components/cart/CartContext";
 import { Badge } from "@/components/ui/badge";
+import { useMarket } from "@/components/market/MarketContext";
+import { convertForDisplay } from "@/lib/currency";
 
 export function ProductCard({ product, className }: { product: Product; className?: string }) {
   const { toggleWishlist, isWishlisted, addToCart } = useCart();
+  const { currency } = useMarket();
   const wish = isWishlisted(product.id);
   const disc = discountPercent(product.price, product.compareAtPrice);
 
@@ -48,19 +51,23 @@ export function ProductCard({ product, className }: { product: Product; classNam
             <Link href={`/product/${product.slug}`} className="block mt-1 font-medium leading-tight line-clamp-2 text-[15px] hover:underline underline-offset-4">{product.name}</Link>
           </div>
           <div className="text-right shrink-0">
-            <div className="font-semibold text-[15px]">{formatPrice(product.price)}</div>
+            <div className="font-semibold text-[15px]">{convertForDisplay(product.price, currency)}</div>
             {product.compareAtPrice && <div className="text-[12px] text-obsidian/40 line-through">{formatPrice(product.compareAtPrice)}</div>}
           </div>
         </div>
         <div className="mt-3 flex items-center gap-2">
-          <div className="flex items-center gap-1">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <span key={i} className={cn("w-3 h-3 rounded-full", i < Math.round(product.rating) ? "bg-obsidian" : "bg-stone-200")} />
-            ))}
-          </div>
-          <span className="text-[12px] text-obsidian/60">({product.reviewCount})</span>
-          <span className={cn("ml-auto text-[11px] px-2 py-0.5 rounded-full", product.stock > 10 ? "bg-stone-100 text-obsidian/60" : product.stock > 0 ? "bg-sale-light text-sale" : "bg-obsidian text-white")}>
-            {product.stock > 10 ? "In stock" : product.stock > 0 ? `Only ${product.stock} left` : "Out of stock"}
+          {product.rating > 0 && product.reviewCount > 0 && (
+            <>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <span key={i} className={cn("w-3 h-3 rounded-full", i < Math.round(product.rating) ? "bg-obsidian" : "bg-stone-200")} />
+                ))}
+              </div>
+              <span className="text-[12px] text-obsidian/60">({product.reviewCount})</span>
+            </>
+          )}
+          <span className={cn("text-[11px] px-2 py-0.5 rounded-full", "bg-stone-100 text-obsidian/60")}>
+            {product.stock > 0 ? "In stock" : "Out of stock"}
           </span>
         </div>
         <div className="mt-3 flex gap-1.5">

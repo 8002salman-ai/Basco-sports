@@ -10,9 +10,9 @@ export default function AboutPage() {
             <h1 className="mt-4 font-display text-[40px] lg:text-[64px] leading-[0.9] tracking-tight">Built for the long run. Designed to last.</h1>
             <p className="mt-8 text-[18px] leading-relaxed text-obsidian/70 max-w-[560px]">Basco Sports is a premium sports gear and apparel store founded in London. We curate – not aggregate – performance equipment. Every product is tested by athletes, not just listed.</p>
             <div className="mt-10 grid grid-cols-3 gap-6 border-t pt-10 max-w-[480px]">
-              <div><div className="font-display text-[28px] font-bold">2021</div><div className="text-[11px] uppercase tracking-widest opacity-60">Founded</div></div>
+              
               <div><div className="font-display text-[28px] font-bold">34</div><div className="text-[11px] uppercase tracking-widest opacity-60">Products curated</div></div>
-              <div><div className="font-display text-[28px] font-bold">4.8</div><div className="text-[11px] uppercase tracking-widest opacity-60">Avg rating</div></div>
+              <div><div className="font-display text-[28px] font-bold">100%</div><div className="text-[11px] uppercase tracking-widest opacity-60">Tracked orders</div></div>
             </div>
           </div>
           <div className="relative aspect-[4/5] rounded-[28px] overflow-hidden bg-stone-100">
@@ -23,8 +23,8 @@ export default function AboutPage() {
         <div className="mt-20 grid lg:grid-cols-3 gap-6">
           {[
             { title: "Editorial curation", body: "We stock fewer, better products. Each season we remove what doesn't meet durability or fit standards." },
-            { title: "Performance tested", body: "Our team logs miles, sets and overs in every product before it hits the shop. No pay-to-play listings." },
-            { title: "Repair, not replace", body: "2-year warranty and repair program. We design for longevity – less waste, more use." },
+            { title: "Curated selection", body: "We list only gear we would use ourselves. No pay-to-play listings." },
+            { title: "Built to last", body: "We design for longevity and support statutory guarantee rights in every market we serve." },
           ].map(card=>(
             <div key={card.title} className="bg-white rounded-[20px] border p-8">
               <h3 className="font-display text-[22px]">{card.title}</h3>

@@ -9,7 +9,7 @@ export function Footer() {
         <div className="py-14 lg:py-20 border-b border-white/10 grid lg:grid-cols-[1.2fr_1fr] gap-10 items-center">
           <div>
             <h3 className="font-display text-[28px] lg:text-[40px] leading-[0.95] tracking-tight">Join the Basco Club.<br />Get 15% off your first order.</h3>
-            <p className="mt-4 text-white/60 max-w-[520px]">Early access to drops, member pricing, and training notes from athletes. No spam, unsubscribe anytime.</p>
+            <p className="mt-4 text-white/60 max-w-[520px]">Early access to drops and member pricing. Demo signup – no marketing email is sent yet.</p>
           </div>
           <NewsletterForm />
         </div>
@@ -23,7 +23,7 @@ export function Footer() {
                 <div className="text-[10px] tracking-[0.2em] opacity-70 -mt-1">SPORTS</div>
               </div>
             </div>
-            <p className="mt-6 text-white/60 text-[14px] leading-relaxed max-w-[320px]">Premium sports gear and apparel. Editorial curation, performance tested, built to last. Founded for athletes who care about craft.</p>
+            <p className="mt-6 text-white/60 text-[14px] leading-relaxed max-w-[320px]">Premium sports gear and apparel. Editorial curation, worldwide delivery, built to last.</p>
             <div className="mt-6 flex gap-3">
               <span className="h-9 px-4 inline-flex items-center rounded-full bg-white/10 text-[12px] tracking-wide">IG • @bascosports</span>
               <span className="h-9 px-4 inline-flex items-center rounded-full bg-white/10 text-[12px] tracking-wide">X • @basco</span>
@@ -54,9 +54,15 @@ export function Footer() {
           <div>
             <h4 className="text-[12px] tracking-[0.15em] uppercase opacity-60 mb-4">Legal</h4>
             <ul className="space-y-3 text-[14px] text-white/80">
+              <li><Link href="/legal" className="hover:text-white">Legal Centre</Link></li>
               <li><Link href="/privacy" className="hover:text-white">Privacy</Link></li>
               <li><Link href="/terms" className="hover:text-white">Terms</Link></li>
-              <li><span className="text-white/40">Demo checkout – no real charges</span></li>
+              <li><Link href="/cookies" className="hover:text-white">Cookies</Link></li>
+              <li><Link href="/shipping" className="hover:text-white">Shipping</Link></li>
+              <li><Link href="/returns" className="hover:text-white">Returns & Refunds</Link></li>
+              <li><Link href="/warranty" className="hover:text-white">Warranty</Link></li>
+              <li><Link href="/product-safety" className="hover:text-white">Product Safety</Link></li>
+              <li><Link href="/accessibility" className="hover:text-white">Accessibility</Link></li>
               <li className="pt-4">
                 <div className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-lime text-obsidian text-[11px] font-bold tracking-wide">
                   <span className="w-2 h-2 bg-obsidian rounded-full animate-pulse" /> PAYMENTS IN DEMO MODE
@@ -70,7 +76,7 @@ export function Footer() {
           <span>© {new Date().getFullYear()} Basco Sports. All rights reserved. Original brand identity.</span>
           <span className="flex items-center gap-6">
             <span>USD $ • United States</span>
-            <span>Designed in London • Built for sport</span>
+            <Link href="/legal" className="hover:text-white">Legal & business information</Link>
           </span>
         </div>
       </div>

@@ -1,38 +1,52 @@
+import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Terms of Sale" };
+
+const UPDATED = "August 27, 2026";
+
 export default function TermsPage() {
   return (
-    <div className="max-w-[800px] mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-20">
-      <h1 className="font-display text-[40px] leading-[0.9]">Terms of Service</h1>
-      <p className="mt-4 text-[13px] opacity-60">Demo terms – not legal advice. Replace with counsel-reviewed version before going live.</p>
-      <div className="mt-10 space-y-6 text-[14px] leading-relaxed text-obsidian/70">
-        <section className="bg-white rounded-[20px] border p-8">
-          <h2 className="font-semibold text-obsidian">Demo nature</h2>
-          <p className="mt-3">This site is a demonstration ecommerce build. No real transactions occur. Prices, inventory and coupons are mock data. No contract is formed by using demo checkout. Checkout remains demo-only and cannot charge a user – payment adapter is in demo mode until Stripe env configured.</p>
-        </section>
-        <section className="bg-white rounded-[20px] border p-8">
-          <h2 className="font-semibold text-obsidian">Use of site</h2>
-          <p className="mt-3">You may browse and test cart/wishlist functionality, cookie consent preferences (Necessary/Analytics/Advertising), and admin mock (when env not configured). Do not attempt to inject real payment data – demo fields are not PCI-compliant. When live, payments will be handled by Stripe (PCI DSS Level 1) via server env STRIPE_SECRET_KEY.</p>
-        </section>
-        <section className="bg-white rounded-[20px] border p-8">
-          <h2 className="font-semibold text-obsidian">Google services</h2>
-          <ul className="mt-3 list-disc pl-5 space-y-2">
-            <li>Google Analytics loads only after explicit analytics consent and only if NEXT_PUBLIC_GA_MEASUREMENT_ID configured.</li>
-            <li>Google AdSense AdSlot renders real ad only if client ID + slot ID configured AND advertising consent given. Otherwise no ad request. Requires AdSense account approval and ads.txt.</li>
-            <li>Search Console verification via GOOGLE_SITE_VERIFICATION meta tag, server env only.</li>
-          </ul>
-        </section>
-        <section className="bg-white rounded-[20px] border p-8">
-          <h2 className="font-semibold text-obsidian">Admin area</h2>
-          <p className="mt-3">/admin is development-only settings mock when ADMIN_EMAIL, ADMIN_PASSWORD_HASH, ADMIN_SESSION_SECRET not configured. In production, admin requires env-provided credentials with salted hash (bcrypt) and secure session secret, httpOnly signed cookie. Never use email as password, never hardcode secrets. See README Admin Hardening and src/lib/admin-auth.ts.</p>
-        </section>
-        <section className="bg-white rounded-[20px] border p-8">
-          <h2 className="font-semibold text-obsidian">Hermes Connector</h2>
-          <p className="mt-3">Generic custom API integration – configurable via HERMES_ENABLED, HERMES_BASE_URL, HERMES_API_KEY (server-only). No assumptions about Hermes service. Inactive until configured. Implementation point: src/lib/hermes-client.ts.</p>
-        </section>
-        <section className="bg-white rounded-[20px] border p-8">
-          <h2 className="font-semibold text-obsidian">Intellectual property</h2>
-          <p className="mt-3">Basco Sports wordmark and icon are fully original for this demo. Product images from Unsplash – licensed for demo use. Do not reuse without checking license. All branding, copy, and design are original to Basco Sports.</p>
-        </section>
+    <main className="max-w-[860px] mx-auto px-6 py-16">
+      <p className="text-xs uppercase tracking-widest opacity-60">Terms of sale</p>
+      <h1 className="mt-3 text-4xl font-display">Terms of sale</h1>
+      <p className="mt-2 text-sm opacity-60">Effective {UPDATED} • Last updated {UPDATED}</p>
+
+      <div className="mt-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-[13px] leading-relaxed">
+        <strong>Payments are currently in demo mode.</strong> No contract for sale is formed and no payment is taken through checkout while the store is in demo mode. These terms describe how sales will work once live commerce is enabled for your market.
       </div>
-    </div>
+
+      <section className="mt-10 space-y-4 text-[15px] leading-relaxed">
+        <h2 className="font-semibold text-lg">1. Who you are buying from</h2>
+        <p>Orders are placed with Basco Sports as seller of record. Our verified legal business name, registered address, company/trade register details (where applicable), VAT/tax identifiers (where applicable) and support contacts are published on the <Link className="underline" href="/legal">legal centre</Link>. Where a detail is still being verified, the legal centre states that instead of showing placeholder information.</p>
+
+        <h2 className="font-semibold text-lg pt-2">2. Ordering</h2>
+        <p>When you place an order, you make an offer to buy the items in your cart under these terms. We accept when we confirm dispatch. Before you pay, checkout shows the exact items, quantities, prices, discounts, shipping cost, the taxes and duties treatment for your delivery country, the delivery estimate for your chosen service, our identity and links to these terms, our privacy policy and our returns policy. The payment button states “Pay now” with the final total. We do not add mandatory charges after you commit to pay.</p>
+
+        <h2 className="font-semibold text-lg pt-2">3. Prices, currencies and taxes</h2>
+        <p>Prices are set in US dollars as the master currency. Where you choose another display currency, converted amounts are estimates produced using our configured exchange rates and rounded for readability; the confirmed chargeable amount is shown at checkout before payment. Depending on your market, applicable VAT/GST and duties are either included in the order total (where our registrations permit collection) or payable on import — checkout states which applies to you before you order.</p>
+
+        <h2 className="font-semibold text-lg pt-2">4. Delivery</h2>
+        <p>Delivery estimates are estimates, not guarantees. Risk of loss passes in accordance with the carrier terms applicable to your shipment. See the <Link className="underline" href="/shipping">Shipping Policy</Link> for destinations, services, customs handling and what happens if delivery fails.</p>
+
+        <h2 className="font-semibold text-lg pt-2">5. Cancellation, returns and refunds</h2>
+        <p>Our <Link className="underline" href="/returns">Returns & Refunds policy</Link> applies, including voluntary returns, statutory withdrawal rights for eligible markets, and remedies for defective, damaged or incorrect items. Nothing in these terms limits statutory consumer rights that cannot be excluded.</p>
+
+        <h2 className="font-semibold text-lg pt-2">6. Statutory rights</h2>
+        <p>These terms are subject to mandatory consumer protection laws in your market, including statutory guarantee/conformity rights in the EU and UK and applicable US federal and state law. If any provision conflicts with a non-excludable statutory right, the statutory right prevails.</p>
+
+        <h2 className="font-semibold text-lg pt-2">7. Product information</h2>
+        <p>We describe products accurately and display safety and compliance information required for your market before purchase. Product photography shows the item offered; where a product’s imagery or compliance evidence is not yet verified, the product is not offered for sale in the affected market.</p>
+
+        <h2 className="font-semibold text-lg pt-2">8. Liability</h2>
+        <p>To the extent permitted by law, our liability for any order is limited to the amount you paid for that order, except that nothing limits liability for death or personal injury caused by negligence, fraud, or any liability that cannot lawfully be limited.</p>
+
+        <h2 className="font-semibold text-lg pt-2">9. Governing law</h2>
+        <p>Where mandatory local law does not require otherwise, these terms are governed by the law of the seller’s place of establishment, without depriving consumers of protections that cannot be excluded under the law of their usual residence.</p>
+
+        <h2 className="font-semibold text-lg pt-2">10. Contact</h2>
+        <p>Questions about these terms: use the <Link className="underline" href="/contact">contact page</Link>.</p>
+      </section>
+    </main>
   );
 }

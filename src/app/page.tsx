@@ -44,9 +44,9 @@ export default function HomePage() {
                   </Link>
                 </div>
                 <div className="mt-10 grid grid-cols-3 gap-6 max-w-[480px] border-t border-white/10 pt-8">
-                  <div><div className="font-display text-[24px] font-bold">4.8/5</div><div className="text-[11px] tracking-widest uppercase text-white/50">Avg rating • 3.2k reviews</div></div>
-                  <div><div className="font-display text-[24px] font-bold">30 days</div><div className="text-[11px] tracking-widest uppercase text-white/50">Free returns</div></div>
-                  <div><div className="font-display text-[24px] font-bold">2 yr</div><div className="text-[11px] tracking-widest uppercase text-white/50">Warranty</div></div>
+                  <div><div className="font-display text-[24px] font-bold">Worldwide</div><div className="text-[11px] tracking-widest uppercase text-white/50">Tracked delivery</div></div>
+                  <div><div className="font-display text-[24px] font-bold">30 days</div><div className="text-[11px] tracking-widest uppercase text-white/50">Voluntary returns</div></div>
+                  <div><div className="font-display text-[24px] font-bold">Pre-pay</div><div className="text-[11px] tracking-widest uppercase text-white/50">Total shown first</div></div>
                 </div>
               </div>
             </div>
@@ -80,10 +80,10 @@ export default function HomePage() {
         {/* Trust strip */}
         <div className="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[
-            { icon: Truck, title: "Free shipping over $100", desc: "Tracked 2-4 day delivery" },
-            { icon: RotateCcw, title: "30-day free returns", desc: "No questions, prepaid label" },
-            { icon: ShieldCheck, title: "2-year warranty", desc: "Built to last, repaired free" },
-            { icon: Star, title: "4.8/5 from 3,200+", desc: "Verified athlete reviews" },
+            { icon: Truck, title: "Worldwide shipping", desc: "Tracked international delivery" },
+            { icon: RotateCcw, title: "30-day returns", desc: "See our returns policy for your market" },
+            { icon: ShieldCheck, title: "Statutory rights", desc: "Guarantees per your local consumer law" },
+            { icon: Star, title: "Honest reviews only", desc: "No invented ratings – ever" },
           ].map(item => (
             <div key={item.title} className="flex items-center gap-3 rounded-2xl bg-white border border-stone-200/70 px-5 py-4">
               <div className="h-10 w-10 rounded-full bg-stone-100 flex items-center justify-center shrink-0"><item.icon className="w-5 h-5" /></div>
@@ -160,7 +160,7 @@ export default function HomePage() {
               <div>
                 <div className="text-[11px] tracking-widest uppercase opacity-60">Limited • Deals</div>
                 <h3 className="mt-3 font-display text-[30px] leading-[0.95] max-w-[320px]">Seasonal reductions on pro gear.</h3>
-                <p className="mt-3 text-[14px] opacity-70 max-w-[360px]">Up to 30% off speed boots, adjustable dumbbells and belay parkas. While stocks last.</p>
+                <p className="mt-3 text-[14px] opacity-70 max-w-[360px]">Selected styles from the deals edit. Availability confirmed at checkout.</p>
               </div>
               <Link href="/category/deals" className="mt-6 self-start h-11 px-6 rounded-full bg-obsidian text-white text-[14px] font-semibold inline-flex items-center gap-2">Shop deals <ArrowUpRight className="w-4 h-4" /></Link>
             </div>
@@ -203,7 +203,7 @@ export default function HomePage() {
       <section className="bg-obsidian text-white">
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-10 flex flex-wrap items-center justify-between gap-6 text-[13px] tracking-[0.15em] uppercase opacity-70">
           <span>Basco Lab • Basco Run • Basco Court • Basco Cricket Co. • Basco Outdoor • Basco Training</span>
-          <span className="hidden lg:inline">Editorial curation • Performance tested • Est. 2021 London</span>
+          <span className="hidden lg:inline">Editorial curation • Worldwide delivery • Duties shown before payment</span>
         </div>
       </section>
     </div>

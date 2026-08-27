@@ -1,70 +1,55 @@
-"use client";
-import { useConsent } from "@/components/consent/ConsentContext";
+import type { Metadata } from "next";
 import Link from "next/link";
 
+export const metadata: Metadata = { title: "Privacy Policy" };
+
+const UPDATED = "August 27, 2026";
+
 export default function PrivacyPage() {
-  const { consent, setOpenPreferences } = useConsent();
-
   return (
-    <div className="max-w-[800px] mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-20">
-      <h1 className="font-display text-[40px] leading-[0.9]">Privacy Policy</h1>
-      <p className="mt-4 text-[13px] opacity-60">Last updated: Jan 2025 • Demo store – privacy-respecting integrations, consent-first.</p>
+    <main className="max-w-[860px] mx-auto px-6 py-16">
+      <p className="text-xs uppercase tracking-widest opacity-60">Privacy policy</p>
+      <h1 className="mt-3 text-4xl font-display">Privacy policy</h1>
+      <p className="mt-2 text-sm opacity-60">Effective {UPDATED} • Last updated {UPDATED}</p>
 
-      <div className="mt-6 flex gap-3">
-        <button onClick={() => setOpenPreferences(true)} className="h-10 px-5 rounded-full bg-obsidian text-white text-[13px]">Manage cookie preferences</button>
-        <Link href="/terms" className="h-10 px-5 rounded-full border bg-white text-[13px] flex items-center">Terms</Link>
-      </div>
+      <section className="mt-10 space-y-4 text-[15px] leading-relaxed">
+        <h2 className="font-semibold text-lg">1. Who we are</h2>
+        <p>Basco Sports is the data controller for this store. Our verified legal business identity and privacy contact are published on the <Link className="underline" href="/legal">legal centre</Link>; while verification is in progress we say so here rather than displaying placeholder details. We do not have a Data Protection Officer because none is currently required for our operations; if that changes, this policy will say so.</p>
 
-      <div className="mt-10 space-y-6 text-[14px] leading-relaxed text-obsidian/70">
-        <section className="bg-white rounded-[20px] border p-8">
-          <h2 className="font-semibold text-obsidian">Cookie preferences – Necessary / Analytics / Advertising</h2>
-          <p className="mt-3">We use a consent layer with three categories:</p>
-          <ul className="mt-3 list-disc pl-5 space-y-2">
-            <li><strong>Necessary (always on):</strong> cart (<code>basco-cart-v1</code>), wishlist (<code>basco-wishlist-v1</code>), coupon, consent (<code>basco-consent-v1</code>), admin session (httpOnly). No opt-out – required for store function.</li>
-            <li><strong>Analytics (opt-in):</strong> Google Analytics 4 – loads only if <code>NEXT_PUBLIC_GA_MEASUREMENT_ID</code> is configured in deployment env AND you explicitly enable Analytics in preferences. No tracking without consent. See analytics component <code>src/components/analytics/GoogleAnalytics.tsx</code>.</li>
-            <li><strong>Advertising (opt-in):</strong> Google AdSense – AdSlot component does NOT load/render real ad unless client ID <code>NEXT_PUBLIC_ADSENSE_CLIENT_ID</code> AND slot ID configured AND you enable Advertising consent. Otherwise no ad request is made; safe placeholder only in development. See <code>src/components/ads/AdSlot.tsx</code>.</li>
-          </ul>
-          <div className="mt-4 p-3 rounded-xl bg-stone-50 border text-[12px]">
-            Current consent: Necessary={String(consent.necessary)} • Analytics={String(consent.analytics)} • Advertising={String(consent.advertising)} • HasConsented={String(consent.hasConsented)} • Updated={consent.updatedAt || 'never'}
-          </div>
-          <p className="mt-4 text-[12px]">You can change choices anytime via the banner or this button. Consent is persisted locally, not on server.</p>
-        </section>
+        <h2 className="font-semibold text-lg pt-2">2. What we collect (actual current processing)</h2>
+        <ul className="list-disc pl-6 space-y-1">
+          <li><strong>Cart, wishlist and coupon contents</strong> — stored on your device (browser local storage) so your basket persists. Not sent to us until you use checkout.</li>
+          <li><strong>Delivery country, currency and language choices</strong> — stored on your device; the country suggestion uses only your device’s timezone setting on your device and is never transmitted.</li>
+          <li><strong>Checkout information</strong> — when you use checkout (currently demo), the contact and order details you enter, plus the order record, are stored to process and reference the order.</li>
+          <li><strong>Payment data</strong> — we never receive or store card numbers. When live payments begin, card data is handled by our payment processor on their secure pages/integration.</li>
+          <li><strong>Analytics and advertising</strong> — Google Analytics and Google AdSense load only if configured by us AND you consent via the cookie banner. Without consent, no analytics or ad requests are made.</li>
+          <li><strong>Security logs</strong> — server logs needed to operate and secure the service.</li>
+        </ul>
 
-        <section className="bg-white rounded-[20px] border p-8">
-          <h2 className="font-semibold text-obsidian">Google integrations – privacy respecting</h2>
-          <ul className="mt-3 list-disc pl-5 space-y-2">
-            <li><strong>Google Analytics:</strong> Loads gtag.js only after consent. Requires <code>NEXT_PUBLIC_GA_MEASUREMENT_ID</code> (format G-XXXXXXXXXX) set in Vercel/Cloudflare Pages env. No data sent without consent. IP anonymization enabled. See README for verification and consent requirements.</li>
-            <li><strong>Google AdSense:</strong> AdSlot requires <code>NEXT_PUBLIC_ADSENSE_CLIENT_ID</code> (ca-pub-...) + slot ID + advertising consent. Real ad script <code>pagead2.googlesyndication.com</code> only injected after consent. In production without config, component renders nothing to avoid policy violation. In development, shows dashed placeholder explaining missing config. Requires approved AdSense account and domain approval (ads.txt). See README AdSense policy/approval prerequisites.</li>
-            <li><strong>Search Console verification:</strong> Driven by server env <code>GOOGLE_SITE_VERIFICATION</code> (meta content token only). Implemented via <code>generateMetadata()</code> in <code>src/app/layout.tsx</code> – adds <code>google-site-verification</code> meta tag only if configured. No Google API call from app.</li>
-          </ul>
-        </section>
+        <h2 className="font-semibold text-lg pt-2">3. Why we process data (lawful bases)</h2>
+        <p>Where EU/UK GDPR applies: performing our contract with you (orders, delivery, returns); compliance with legal obligations (tax, customs and consumer-law records); legitimate interests in operating a secure store (security logs, fraud prevention, service improvement); and your consent where required (analytics, advertising, marketing email). We do not use consent as the basis for everything.</p>
 
-        <section className="bg-white rounded-[20px] border p-8">
-          <h2 className="font-semibold text-obsidian">What we collect (demo)</h2>
-          <p className="mt-3">Currently Basco Sports runs mostly client-side with localStorage for cart/wishlist/consent. Newsletter form shows alert only, no email delivery. Contact form does not send email – integration point documented in README. No personal data sent to server except admin login (server-side, httpOnly cookie) when admin env configured.</p>
-        </section>
+        <h2 className="font-semibold text-lg pt-2">4. Service providers</h2>
+        <p>We use: hosting (Vercel and/or Cloudflare), database (Supabase, when configured), payment processing (Stripe, once live payments are enabled — demo mode today), email delivery for order confirmations (our configured email provider), and analytics/advertising (Google) strictly behind consent. These providers process data on our behalf or as independent controllers per their terms, and may process data outside your country under appropriate safeguards such as adequacy decisions or Standard Contractual Clauses.</p>
 
-        <section className="bg-white rounded-[20px] border p-8">
-          <h2 className="font-semibold text-obsidian">Hermes Connector – Generic Custom API</h2>
-          <p className="mt-3">Future integration for custom backend / fulfillment / ERP. Configurable via env:</p>
-          <ul className="mt-3 list-disc pl-5 space-y-2">
-            <li><code>HERMES_ENABLED</code>=true/false – feature flag</li>
-            <li><code>HERMES_BASE_URL</code> – base URL of your Hermes API (e.g., https://api.hermes.example.com)</li>
-            <li><code>HERMES_API_KEY</code> – server-only secret, never exposed to client, stored in deployment env</li>
-          </ul>
-          <p className="mt-3 text-[12px]">Implementation point: <code>src/lib/hermes-client.ts</code> (to be created when service defined). No external API call in demo. Never log key, never expose in UI.</p>
-        </section>
+        <h2 className="font-semibold text-lg pt-2">5. International transfers</h2>
+        <p>Because we operate internationally, your data may be processed in countries other than yours. Where data leaves the EEA/UK we rely on adequacy decisions or Standard Contractual Clauses with our processors.</p>
 
-        <section className="bg-white rounded-[20px] border p-8">
-          <h2 className="font-semibold text-obsidian">Future live implementation</h2>
-          <ul className="mt-3 list-disc pl-5 space-y-2">
-            <li>When live, we will collect email, shipping address and payment metadata via Stripe – never raw card numbers. Payments remain demo-only until Stripe env configured.</li>
-            <li>Data stored in GDPR-compliant DB (e.g., Supabase EU). Retention 2 years.</li>
-            <li>Rights: access, deletion, portability – contact privacy@bascosports.demo (demo address).</li>
-            <li>Admin: requires env-provided ADMIN_EMAIL + salted ADMIN_PASSWORD_HASH (bcrypt) + ADMIN_SESSION_SECRET, httpOnly signed cookie, 8h expiry. See README Admin Hardening.</li>
-          </ul>
-        </section>
-      </div>
-    </div>
+        <h2 className="font-semibold text-lg pt-2">6. Retention</h2>
+        <p>Purpose-based retention: order and transaction records — as long as required by tax, accounting and consumer law for the seller entity (period confirmed with our advisors before live commerce); cart/wishlist local storage — until you clear it; consent records — until withdrawn plus a suppression record; support communications — as long as needed to resolve your query and meet legal requirements; security logs — shortest period that is justified for security purposes. We do not claim fixed periods we cannot yet legally determine.</p>
+
+        <h2 className="font-semibold text-lg pt-2">7. Your rights</h2>
+        <p>Depending on your location you may have rights to access, correct, delete, restrict or object to processing, data portability, and to withdraw consent at any time (consent withdrawal is as easy as giving it — see the footer cookie preferences). EU/UK residents may complain to their supervisory authority (for example the ICO in the UK). US state-law rights (such as CCPA/CPRA where applicable) depend on our size and practices; we will document applicability as our operations grow and will honour applicable requests. To exercise any right, use the <Link className="underline" href="/contact">contact page</Link>.</p>
+
+        <h2 className="font-semibold text-lg pt-2">8. Marketing email</h2>
+        <p>Marketing email (like the Basco Club newsletter) is sent only with valid consent where required, with unsubscribe in every message. Order, safety and recall emails are transactional and continue regardless of marketing choices.</p>
+
+        <h2 className="font-semibold text-lg pt-2">9. Children</h2>
+        <p>This store is not directed at children under 13 (or under 16 where local law requires a higher age for consent), and we do not knowingly collect their data.</p>
+
+        <h2 className="font-semibold text-lg pt-2">10. Changes</h2>
+        <p>We update this policy as our processing changes; the effective and last-updated dates above always reflect the current version.</p>
+      </section>
+    </main>
   );
 }

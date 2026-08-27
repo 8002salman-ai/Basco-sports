@@ -6,8 +6,8 @@ import { cn } from "@/lib/utils";
 
 const faqs = [
   { q: "Is this a real store? Will I be charged?", a: "No – Basco Sports is currently in demo mode. Checkout UI is fully functional but no real payment is collected. Payment adapter is documented in src/lib/payment-adapter.ts. See README 'Payments later'." },
-  { q: "What is your shipping policy?", a: "Free standard shipping over $100 (2-4 days, tracked). $9.50 under $100. Express 1-2 days $18. International coming soon. See Shipping & Returns page." },
-  { q: "How do returns work?", a: "30-day free returns with prepaid label. Items must be unused with tags. Worn shoes can be returned if defective – we offer repair first." },
+  { q: "What is your shipping policy?", a: "We ship internationally with tracked delivery. Pick your country in the header to see available services and estimates for your destination. See the Shipping page." },
+  { q: "How do returns work?", a: "Change-of-mind returns: 30 days, unworn with tags – see the Returns page for your market, including statutory withdrawal rights. Defective items are always remedied under applicable consumer law." },
   { q: "How does coupon work?", a: "Demo coupons: BASCO10 (10% off $100+), WELCOME15 (15% off $75+), TRAIN20 (20% off $150+). Applied client-side, persisted in localStorage." },
   { q: "Are products real?", a: "Product data is seeded mock data with plausible specs, inspired by real categories but original Basco naming. Images are from Unsplash with permissive license." },
   { q: "How do cart and wishlist persist?", a: "Via localStorage keys basco-cart-v1 and basco-wishlist-v1. Cleared when you clear browser storage. No backend DB yet." },
