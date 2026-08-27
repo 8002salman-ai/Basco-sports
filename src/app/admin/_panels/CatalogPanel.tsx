@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus, Pencil, Trash2, Search, Eye, EyeOff } from 'lucide-react';
+import { R2ImageUpload } from './R2ImageUpload';
 import { getDb } from '@/lib/admin/db';
 import { AdminProduct } from '@/lib/admin/types';
 import { products as seedProducts } from '@/data/products';
@@ -414,8 +415,18 @@ export function CatalogPanel() {
                 <input type="number" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} className={`${inputCls} mt-1`} />
               </div>
               <div className="sm:col-span-2">
-                <label className="text-[11px] font-semibold uppercase tracking-wider text-obsidian/50">Image URL (Unsplash etc.)</label>
-                <input value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} className={`${inputCls} mt-1`} />
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-obsidian/50">Product Image</label>
+                <div className="mt-1 flex gap-2 items-start">
+                  <div className="flex-1">
+                    <R2ImageUpload
+                      value={form.image}
+                      onChange={(url) => setForm({ ...form, image: url })}
+                      prefix={`products/${slugify(form.name || 'unnamed')}`}
+                    />
+                  </div>
+                </div>
+                <p className="mt-1 text-[11px] text-obsidian/40">Upload to R2 or paste URL below</p>
+                <input value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} placeholder="Or paste an image URL" className={`${inputCls} mt-1`} />
               </div>
               <div className="sm:col-span-2">
                 <label className="text-[11px] font-semibold uppercase tracking-wider text-obsidian/50">Description</label>
