@@ -51,8 +51,8 @@ export function ProductCard({ product, className }: { product: Product; classNam
             <Link href={`/product/${product.slug}`} className="block mt-1 font-medium leading-tight line-clamp-2 text-[15px] hover:underline underline-offset-4">{product.name}</Link>
           </div>
           <div className="text-right shrink-0">
-            <div className="font-semibold text-[15px]">{convertForDisplay(product.price, currency)}</div>
-            {product.compareAtPrice && <div className="text-[12px] text-obsidian/40 line-through">{formatPrice(product.compareAtPrice)}</div>}
+            <div className="font-semibold text-[14px] lg:text-[15px] whitespace-nowrap tabular-nums">{convertForDisplay(product.price, currency)}</div>
+            {product.compareAtPrice && <div className="text-[12px] text-obsidian/40 line-through whitespace-nowrap">{formatPrice(product.compareAtPrice)}</div>}
           </div>
         </div>
         <div className="mt-3 flex items-center gap-2">

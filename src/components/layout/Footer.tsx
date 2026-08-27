@@ -6,7 +6,7 @@ export function Footer() {
     <footer className="bg-obsidian text-white">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
         {/* Newsletter */}
-        <div className="py-14 lg:py-20 border-b border-white/10 grid lg:grid-cols-[1.2fr_1fr] gap-10 items-center">
+        <div className="py-10 lg:py-12 border-b border-white/10 grid lg:grid-cols-[1.2fr_1fr] gap-8 items-center">
           <div>
             <h3 className="font-display text-[28px] lg:text-[40px] leading-[0.95] tracking-tight">Join the Basco Club.<br />Get 15% off your first order.</h3>
             <p className="mt-4 text-white/60 max-w-[520px]">Early access to drops and member pricing. Demo signup – no marketing email is sent yet.</p>
@@ -14,7 +14,7 @@ export function Footer() {
           <NewsletterForm />
         </div>
 
-        <div className="py-14 grid grid-cols-2 md:grid-cols-5 gap-10">
+        <div className="py-10 grid grid-cols-2 md:grid-cols-5 gap-8">
           <div className="col-span-2">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white rounded-[12px] flex items-center justify-center"><span className="text-obsidian font-black text-[20px] tracking-tighter">B</span></div>
@@ -72,7 +72,7 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="py-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4 text-[12px] text-white/50">
+        <div className="py-6 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4 text-[12px] text-white/50">
           <span>© {new Date().getFullYear()} Basco Sports. All rights reserved. Original brand identity.</span>
           <span className="flex items-center gap-6">
             <span>USD $ • United States</span>

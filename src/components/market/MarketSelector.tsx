@@ -1,6 +1,6 @@
 "use client";
 import React, { useMemo, useState } from "react";
-import { Globe, ChevronDown, Search, X, Check, MapPin, XCircle } from "lucide-react";
+import { ChevronDown, Search, X, Check, MapPin, XCircle } from "lucide-react";
 import { useMarket } from "./MarketContext";
 import { supportedCountries, currencies, markets } from "@/config/markets";
 
@@ -43,31 +43,34 @@ export function MarketSelector({ compact = false }: { compact?: boolean }) {
       <button
         onClick={() => setOpen(true)}
         className={compact
-          ? "h-9 px-3 rounded-full bg-white/10 inline-flex items-center gap-1.5 text-[12px] font-medium"
-          : "h-9 px-3 rounded-full border border-stone-200 hover:bg-stone-100 inline-flex items-center gap-1.5 text-[13px] font-medium transition-colors"}
+          ? "h-9 px-2.5 rounded-full bg-white/10 inline-flex items-center gap-1 text-[12px] font-medium whitespace-nowrap"
+          : "h-9 px-2 sm:px-2.5 rounded-full border border-stone-200 hover:bg-stone-100 inline-flex items-center gap-1 sm:gap-1.5 text-[12px] sm:text-[13px] font-medium transition-colors whitespace-nowrap max-w-[46vw] sm:max-w-none"}
         aria-haspopup="dialog"
         aria-expanded={open}
+        aria-label={`Ship to ${market?.countryName ?? ""}, currency ${currency}`}
       >
-        <Globe className="w-4 h-4" />
         <span aria-hidden>{market?.flagEmoji}</span>
-        {!compact && <span>Ship to: {market?.countryName}</span>}
+        <span className="hidden md:inline">{market?.countryCode}</span>
+        <span className="hidden xl:inline font-normal opacity-70">Ship to:</span>
+        <span className="hidden xl:inline">{market?.countryName}</span>
+        <span className="hidden md:inline opacity-40" aria-hidden>·</span>
         <span className="font-semibold">{currency}</span>
-        <ChevronDown className="w-3.5 h-3.5 opacity-60" />
+        <ChevronDown className="w-3.5 h-3.5 opacity-60 shrink-0" />
       </button>
 
       {open && (
         <div className="fixed inset-0 z-[70]" role="dialog" aria-modal="true" aria-label="Shipping country and currency">
           <div className="absolute inset-0 bg-obsidian/40 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <div className="absolute inset-x-0 bottom-0 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:top-[8%] sm:bottom-auto w-full sm:w-[560px] max-h-[86vh] sm:max-h-[80vh] bg-white sm:rounded-[24px] rounded-t-[24px] shadow-lift flex flex-col overflow-hidden">
-            <div className="px-6 pt-5 pb-4 border-b border-stone-100 flex items-center justify-between">
-              <div>
-                <h2 className="font-display font-bold text-[20px] leading-none">Shipping & currency</h2>
-                <p className="text-[12px] text-obsidian/60 mt-1">Choose where we deliver and how prices display.</p>
+          <div className="absolute inset-x-0 bottom-0 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:top-[6%] sm:bottom-auto w-full sm:w-[540px] max-h-[88dvh] sm:max-h-[82dvh] bg-white sm:rounded-[24px] rounded-t-[24px] shadow-lift flex flex-col overflow-hidden">
+            <div className="sticky top-0 z-10 bg-white px-5 sm:px-6 pt-4 pb-3 border-b border-stone-100 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="font-display font-bold text-[18px] sm:text-[20px] leading-none">Shipping & currency</h2>
+                <p className="text-[12px] text-obsidian/60 mt-1 truncate">Choose where we deliver and how prices display.</p>
               </div>
-              <button onClick={() => setOpen(false)} aria-label="Close" className="h-9 w-9 rounded-full bg-stone-100 flex items-center justify-center"><X className="w-5 h-5" /></button>
+              <button onClick={() => setOpen(false)} aria-label="Close" className="h-9 w-9 shrink-0 rounded-full bg-stone-100 flex items-center justify-center"><X className="w-5 h-5" /></button>
             </div>
 
-            <div className="px-6 py-4 border-b border-stone-100">
+            <div className="px-5 sm:px-6 py-4 border-b border-stone-100">
               <label className="text-[11px] tracking-widest uppercase opacity-60">Currency</label>
               <div className="mt-2 flex flex-wrap gap-2">
                 {Object.values(currencies).map((c) => (
@@ -85,8 +88,8 @@ export function MarketSelector({ compact = false }: { compact?: boolean }) {
               <p className="mt-2 text-[11px] text-obsidian/50">Prices outside USD are converted estimates. The confirmed total appears at checkout before payment.</p>
             </div>
 
-            <div className="px-6 py-4 border-b border-stone-100 relative">
-              <Search className="absolute left-9 top-1/2 -translate-y-[35%] w-4 h-4 text-obsidian/40" />
+            <div className="px-5 sm:px-6 py-4 border-b border-stone-100 relative">
+              <Search className="absolute left-8 sm:left-9 top-1/2 -translate-y-[35%] w-4 h-4 text-obsidian/40" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -96,7 +99,7 @@ export function MarketSelector({ compact = false }: { compact?: boolean }) {
               />
             </div>
 
-            <div className="flex-1 overflow-auto p-2" role="listbox" aria-label="Countries">
+            <div className="flex-1 overflow-y-auto overscroll-contain p-2 pb-[max(8px,env(safe-area-inset-bottom))]" role="listbox" aria-label="Countries">
               {results.length === 0 && <p className="p-6 text-center text-[13px] text-obsidian/60">No countries match “{query}”.</p>}
               {results.map((m) => {
                 const active = m.countryCode === countryCode;
