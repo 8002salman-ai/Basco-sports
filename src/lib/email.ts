@@ -252,6 +252,14 @@ export async function sendShippingUpdate(data: ShippingEmailData): Promise<boole
 }
 
 /**
+ * Send a pre-built transactional email (used by the review-request module).
+ * Returns false when email is not configured or the provider rejects the send.
+ */
+export async function sendRawEmail(to: string, subject: string, html: string): Promise<boolean> {
+  return sendEmail(to, subject, html);
+}
+
+/**
  * Check if email is configured.
  */
 export function isEmailConfigured(): boolean {

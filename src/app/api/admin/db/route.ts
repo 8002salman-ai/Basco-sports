@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { getServerEnv, isAdminConfigured } from '@/lib/env';
 import { verifySessionToken, ADMIN_SESSION_COOKIE } from '@/lib/admin-auth';
 import { SupabaseAdapter } from '@/lib/admin/db';
+import { maybeSendAfterOrderUpdate, maybeSendAfterOrderUpdateBy } from '@/lib/review-request';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'edge';
@@ -90,9 +91,14 @@ export async function POST(req: NextRequest) {
         break;
       case 'update':
         data = await adapter.update(body.table, payload?.id, payload?.patch);
+        // Post-delivery review request (neutral, once per order) – fire only
+        // for orders; internally gated on COMMERCE_LIVE + email config and
+        // never throws, so the admin action always succeeds.
+        if (body.table === 'orders') await maybeSendAfterOrderUpdate(payload?.id, payload?.patch);
         break;
       case 'updateBy':
         data = await adapter.updateBy(body.table, payload?.column, payload?.value, payload?.patch);
+        if (body.table === 'orders') await maybeSendAfterOrderUpdateBy(payload?.column, payload?.value, payload?.patch);
         break;
       case 'remove':
         await adapter.remove(body.table, payload?.id);
