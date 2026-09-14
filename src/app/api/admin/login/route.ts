@@ -55,32 +55,37 @@ export async function POST(req: NextRequest) {
           const storedHash = user.password_hash;
           if (isPbkdf2HashFormat(storedHash)) {
             const { ok } = await verifyAdminPassword(password, storedHash);
-            if (ok) {
-              const role = user.role as 'owner' | 'admin';
-              const token = await createSessionToken(email, user.name || email, role);
-              if (token) {
-                // Update last login (best effort)
-                fetch(`${supabaseUrl}/rest/v1/admin_users?email=eq.${encodeURIComponent(email)}`, {
-                  method: 'PATCH',
-                  headers: {
-                    'apikey': serviceKey,
-                    'Authorization': `Bearer ${serviceKey}`,
-                    'Content-Type': 'application/json',
-                    'Prefer': 'return=minimal',
-                  },
-                  body: JSON.stringify({ updated_at: new Date().toISOString() }),
-                }).catch(() => {});
+            if (!ok) {
+              // The DB row is authoritative: a wrong password must not fall
+              // through to the legacy env credential, or a password rotated
+              // in the console would keep working.
+              return NextResponse.json({ ok: false, error: 'Invalid credentials' }, { status: 401 });
+            }
 
-                const res = NextResponse.json({ ok: true, message: 'Authenticated', role });
-                res.cookies.set(ADMIN_SESSION_COOKIE, token, {
-                  httpOnly: true,
-                  secure: process.env.NODE_ENV === 'production',
-                  sameSite: 'lax',
-                  path: '/',
-                  maxAge: ADMIN_SESSION_MAX_AGE,
-                });
-                return res;
-              }
+            const role = user.role as 'owner' | 'admin';
+            const token = await createSessionToken(email, user.name || email, role);
+            if (token) {
+              // Update last login (best effort)
+              fetch(`${supabaseUrl}/rest/v1/admin_users?email=eq.${encodeURIComponent(email)}`, {
+                method: 'PATCH',
+                headers: {
+                  'apikey': serviceKey,
+                  'Authorization': `Bearer ${serviceKey}`,
+                  'Content-Type': 'application/json',
+                  'Prefer': 'return=minimal',
+                },
+                body: JSON.stringify({ updated_at: new Date().toISOString() }),
+              }).catch(() => {});
+
+              const res = NextResponse.json({ ok: true, message: 'Authenticated', role });
+              res.cookies.set(ADMIN_SESSION_COOKIE, token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax',
+                path: '/',
+                maxAge: ADMIN_SESSION_MAX_AGE,
+              });
+              return res;
             }
           }
         }
