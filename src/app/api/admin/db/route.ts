@@ -14,7 +14,14 @@ interface DbRequest {
   payload?: any;
 }
 
-const SAFE_TABLES = new Set(['products', 'orders', 'users', 'store_settings', 'admin_users', 'product_reviews']);
+/**
+ * Tables the generic proxy serves. `admin_users` is deliberately absent: it
+ * holds roles and password hashes, so it is reachable only through
+ * /api/admin/admin-users, which requires the owner role and enforces the
+ * last-owner / not-yourself invariants. Serving it here would let any signed-in
+ * admin session promote itself with one `updateBy`.
+ */
+const SAFE_TABLES = new Set(['products', 'orders', 'users', 'store_settings', 'product_reviews']);
 
 /**
  * Server-side admin DB proxy.
