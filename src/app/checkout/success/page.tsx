@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { ShieldCheck } from 'lucide-react';
 
+export const runtime = 'edge';
+
 /**
  * Checkout success page – shown after Stripe redirects back.
  * The actual order confirmation is handled by the webhook

@@ -5,6 +5,8 @@ import { ProductMarketPanel } from "@/components/product/ProductMarketPanel";
 import { ProductPurchasePanel } from "@/components/product/ProductPurchasePanel";
 import ProductReviews from "@/components/product/ProductReviews";
 
+export const runtime = 'edge';
+
 export default async function ProductPage({ params }: { params: { slug: string } }) {
   const product = products.find((item) => item.slug === params.slug);
   if (!product) notFound();
