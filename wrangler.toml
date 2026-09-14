@@ -7,3 +7,23 @@ name = "basco-sports"
 pages_build_output_dir = ".vercel/output/static"
 compatibility_date = "2026-08-01"
 compatibility_flags = ["nodejs_compat"]
+
+# Build environment variables.
+#
+# Cloudflare reads these from THIS file, not from the project's Settings >
+# Environment variables: the build log prints "Build environment variables:
+# (none found)" and the deployed client bundle is built without them, so every
+# NEXT_PUBLIC_* below ended up inlined as undefined on pages.dev (sitemap/robots
+# fell back to the placeholder origin, and the shop silently served the static
+# seed catalog instead of Supabase). Secrets do not go here — the service-role
+# key and admin credentials stay in the project's environment variables, which
+# the edge runtime reads at request time.
+#
+# Vercel does not read this file; it keeps the same values in its own dashboard.
+[vars]
+NEXT_PUBLIC_SITE_URL = "https://basco-sports.pages.dev"
+NEXT_PUBLIC_SUPABASE_URL = "https://ljzpwkzdudnyowzkzgtc.supabase.co"
+# Supabase anon key — public by design: it ships in the browser bundle and row
+# level security is what protects the data. Not the service-role key.
+NEXT_PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxqenB3a3pkdWRueW93emt6Z3RjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4MTM5MzgsImV4cCI6MjEwMzM4OTkzOH0.TUjtDwFB0QlL3W9XNyMj0-mrzG2kMArMdx-7fX-sCNg"
+NEXT_PUBLIC_BASCO_PAYMENT_MODE = "demo"

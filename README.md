@@ -195,9 +195,9 @@ See `.env.example` for dummy placeholders. Never commit real secrets, never expo
 3. `@cloudflare/next-on-pages@1.13.15`, `wrangler@^3` and `vercel` are already installed as devDependencies (newer next-on-pages versions require `next >= 14.3` — this project pins 14.2.5, so do not bump next-on-pages).
 4. Node.js compatibility: handled by the repo's `wrangler.toml` (`compatibility_flags = ["nodejs_compat"]`). No dashboard action needed. The Next.js edge runtime needs `node:buffer`/`node:async_hooks`, and admin auth uses WebCrypto PBKDF2 — all supported.
    - **IMPORTANT — do NOT use `wrangler pages deploy` with a locally built `.vercel/output` on Windows:** the local `vercel build` on Windows deterministically mis-bundles Edge route handlers (verified: login/logout handlers dropped, route-to-function mapping scrambled). Cloudflare's Linux CI (git integration) builds correctly — always deploy via the git-connected project.
-5. Environment Variables: Pages > Settings > Environment variables:
-   - **Already set (via wrangler CLI, encrypted):** `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET`
-   - Add as plain Variable: `NEXT_PUBLIC_SITE_URL` = `https://basco-sports.pages.dev` (needed for correct sitemap/OG)
+5. Environment Variables — two different places, and mixing them up is silent:
+   - **Build-time (`NEXT_PUBLIC_*`) live in `wrangler.toml` `[vars]`.** Cloudflare reads build variables from that file, not from the dashboard: a build whose log prints `Build environment variables: (none found)` inlines every `NEXT_PUBLIC_*` as `undefined`, which degrades the site without failing — the shop serves the static seed catalog instead of Supabase, and sitemap/robots/OG fall back to the placeholder origin. Vercel does not read `wrangler.toml`; it holds the same values in its own dashboard.
+   - **Secrets live in Pages > Settings > Environment variables** (read by the edge runtime at request time): `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET`, `SUPABASE_SERVICE_ROLE_KEY` (already set, encrypted).
    - Optional: `NEXT_PUBLIC_GA_MEASUREMENT_ID`, `NEXT_PUBLIC_ADSENSE_CLIENT_ID`, slot IDs, `GOOGLE_SITE_VERIFICATION`, `STRIPE_*`, `HERMES_*` (see .env.example)
 6. First build may take a few minutes (installs deps + Vercel build on Linux). Deploy – Cloudflare serves remote Unsplash as-is.
 
