@@ -1,77 +1,133 @@
-"use client";
+import Link from 'next/link';
+import { cookies } from 'next/headers';
+import AccountAuth from '@/components/account/AccountAuth';
+import WishlistPanel from '@/components/account/WishlistPanel';
+import { CUSTOMER_SESSION_COOKIE, verifyCustomerSession } from '@/lib/customer-auth';
+import { listCustomerOrders } from '@/lib/orders';
+import { formatPrice } from '@/lib/utils';
+
 export const dynamic = 'force-dynamic';
-import { useState } from "react";
-import Link from "next/link";
-import { useCart } from "@/components/cart/CartContext";
-import { products } from "@/data/products";
-import Image from "next/image";
-import { formatPrice } from "@/lib/utils";
+export const runtime = 'edge';
 
-export default function AccountPage() {
-  const [loggedIn, setLoggedIn] = useState(false);
-  const [email, setEmail] = useState("");
-  const { wishlist } = useCart();
-  const wishProducts = products.filter(p=>wishlist.includes(p.id));
+const STATUS_LABEL: Record<string, string> = {
+  paid: 'Paid',
+  pending: 'Pending',
+  shipped: 'Shipped',
+  delivered: 'Delivered',
+  refunded: 'Refunded',
+  cancelled: 'Cancelled',
+};
 
-  if (!loggedIn) {
-    return (
-      <div className="max-w-[480px] mx-auto px-4 sm:px-6 py-16">
-        <div className="bg-white rounded-[24px] border border-stone-200 p-8">
-          <div className="w-10 h-10 rounded-xl bg-obsidian text-white flex items-center justify-center font-black">B</div>
-          <h1 className="mt-6 font-display text-[28px] leading-none">Account • Demo login</h1>
-          <p className="mt-3 text-[14px] text-obsidian/60">Demo authentication UI – no real auth. Enter any email to view dashboard placeholder. Real auth will be added when provider (Clerk/Auth.js/Supabase) is chosen. See README.</p>
-          <form onSubmit={e=>{ e.preventDefault(); if(email.includes("@")) setLoggedIn(true); }} className="mt-8 space-y-4">
-            <div><label className="text-[12px] opacity-60">Email</label><input value={email} onChange={e=>setEmail(e.target.value)} required placeholder="you@example.com" className="mt-1 w-full h-11 px-4 rounded-full border border-stone-200" /></div>
-            <div><label className="text-[12px] opacity-60">Password (demo – any)</label><input type="password" placeholder="••••••••" className="mt-1 w-full h-11 px-4 rounded-full border border-stone-200" /></div>
-            <button type="submit" className="w-full h-12 rounded-full bg-obsidian text-white font-semibold">Continue – demo login</button>
-            <div className="text-[11px] text-center opacity-60">Demo mode – no account is created. Adapter ready for real auth.</div>
-          </form>
-          <div className="mt-6 p-4 rounded-xl bg-stone-50 border text-[12px]"><div className="font-semibold">Future auth integration</div><div className="opacity-70 mt-1">Add env: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY or AUTH_SECRET. Implement middleware and server session check. See README “Auth later”.</div></div>
-        </div>
-      </div>
-    );
-  }
+const STATUS_TONE: Record<string, string> = {
+  paid: 'bg-lime/30 text-obsidian',
+  shipped: 'bg-obsidian text-white',
+  delivered: 'bg-obsidian/10 text-obsidian',
+  refunded: 'bg-stone-200 text-obsidian/60',
+  cancelled: 'bg-sale-light text-sale',
+};
+
+function formatDate(iso: string): string {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime())
+    ? ''
+    : date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+export default async function AccountPage() {
+  const token = cookies().get(CUSTOMER_SESSION_COOKIE)?.value;
+  const session = token ? await verifyCustomerSession(token) : null;
+
+  if (!session) return <AccountAuth />;
+
+  const orders = await listCustomerOrders(session.email);
 
   return (
-    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
-      <div className="flex items-center justify-between">
-        <h1 className="font-display text-[32px]">Hello, {email.split("@")[0]} • Demo account</h1>
-        <button onClick={()=>setLoggedIn(false)} className="h-10 px-5 rounded-full border">Log out (demo)</button>
-      </div>
-      <div className="mt-8 grid lg:grid-cols-[260px_1fr] gap-8">
-        <aside className="bg-white rounded-[20px] border p-4 h-fit">
-          <nav className="space-y-1 text-[14px]">
-            <div className="px-3 py-2 rounded-full bg-obsidian text-white">Overview</div>
-            <Link href="/account" className="block px-3 py-2 rounded-full hover:bg-stone-100">Orders (0)</Link>
-            <Link href="/account" className="block px-3 py-2 rounded-full hover:bg-stone-100">Addresses</Link>
-            <Link href="/account" className="block px-3 py-2 rounded-full hover:bg-stone-100">Wishlist ({wishProducts.length})</Link>
-            <Link href="/account" className="block px-3 py-2 rounded-full hover:bg-stone-100">Settings</Link>
-          </nav>
-        </aside>
-        <div className="space-y-6">
-          <div className="bg-white rounded-[20px] border p-6">
-            <h3 className="font-semibold">Orders</h3>
-            <p className="text-[14px] text-obsidian/60 mt-2">No orders yet – demo account. When live DB (Supabase/Postgres) is connected, orders from Stripe webhook will appear here.</p>
-          </div>
-          <div className="bg-white rounded-[20px] border p-6">
-            <h3 className="font-semibold">Wishlist • {wishProducts.length}</h3>
-            {wishProducts.length===0 ? <p className="text-[14px] text-obsidian/60 mt-2">No saved items. Heart products to save them – persists in localStorage.</p> :
-              <div className="mt-4 grid grid-cols-2 lg:grid-cols-3 gap-4">
-                {wishProducts.map(p=>(
-                  <div key={p.id} className="flex gap-3 p-3 rounded-xl bg-stone-50 border">
-                    <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-white"><Image src={p.images[0]} alt="" fill className="object-cover" /></div>
-                    <div><div className="text-[13px] font-medium leading-tight">{p.name}</div><div className="text-[12px] opacity-60">{formatPrice(p.price)}</div><Link href={`/product/${p.slug}`} className="text-[12px] underline">View</Link></div>
-                  </div>
-                ))}
-              </div>
-            }
-          </div>
-          <div className="bg-white rounded-[20px] border p-6">
-            <h3 className="font-semibold">Addresses (demo placeholder)</h3>
-            <p className="text-[14px] text-obsidian/60 mt-2">No saved addresses. Add address at checkout – will be stored when DB is integrated.</p>
-          </div>
+    <main className="max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-14">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.2em] opacity-50">Your account</div>
+          <h1 className="mt-2 font-display text-[30px] lg:text-[38px] leading-none">
+            Hello, {session.name || session.email.split('@')[0]}
+          </h1>
+          <p className="mt-2 text-[13px] text-obsidian/60">{session.email}</p>
         </div>
+        <form action="/api/account/logout" method="post">
+          <button
+            type="submit"
+            className="h-11 px-6 rounded-full border border-stone-300 text-[14px] font-medium hover:bg-obsidian hover:text-white hover:border-obsidian transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-obsidian"
+          >
+            Sign out
+          </button>
+        </form>
       </div>
-    </div>
+
+      <section aria-labelledby="orders-heading" className="mt-10">
+        <div className="flex items-center justify-between gap-4">
+          <h2 id="orders-heading" className="font-display text-[20px]">
+            Orders
+          </h2>
+          {orders.length > 0 && <span className="text-[12px] text-obsidian/50">{orders.length} total</span>}
+        </div>
+
+        {orders.length === 0 ? (
+          <div className="mt-4 bg-white rounded-[20px] border border-stone-200 p-6">
+            <p className="text-[14px] text-obsidian/70">No orders yet.</p>
+            <p className="mt-1 text-[13px] text-obsidian/50">
+              Orders placed with {session.email} appear here with their status and tracking.
+            </p>
+            <Link
+              href="/shop"
+              className="mt-5 inline-flex h-11 items-center rounded-full bg-obsidian px-6 text-[14px] font-semibold text-white hover:bg-obsidian-600 transition-colors"
+            >
+              Browse the shop
+            </Link>
+          </div>
+        ) : (
+          <ul className="mt-4 space-y-4">
+            {orders.map((order) => (
+              <li key={order.orderNumber} className="bg-white rounded-[20px] border border-stone-200 p-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="font-display text-[16px]">{order.orderNumber}</span>
+                    <span
+                      className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider ${
+                        STATUS_TONE[order.status] || 'bg-stone-200 text-obsidian/60'
+                      }`}
+                    >
+                      {STATUS_LABEL[order.status] || order.status}
+                    </span>
+                  </div>
+                  <div className="text-[12px] text-obsidian/50">{formatDate(order.createdAt)}</div>
+                </div>
+
+                <ul className="mt-4 divide-y divide-stone-200 border-t border-stone-200">
+                  {(order.items || []).map((item, index) => (
+                    <li key={`${order.orderNumber}-${index}`} className="flex items-start justify-between gap-4 py-3">
+                      <div>
+                        <div className="text-[14px]">{item.name}</div>
+                        <div className="text-[12px] text-obsidian/50">
+                          Qty {item.quantity}
+                          {item.variantLabel ? ` · ${item.variantLabel}` : ''}
+                        </div>
+                      </div>
+                      <div className="text-[14px] tabular-nums">{formatPrice(item.price * item.quantity, order.currency)}</div>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="mt-4 flex items-center justify-between border-t border-stone-200 pt-4">
+                  <span className="text-[13px] text-obsidian/60">
+                    {order.coupon ? `Coupon ${order.coupon} applied` : 'Total'}
+                  </span>
+                  <span className="font-display text-[18px]">{formatPrice(order.total, order.currency)}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <WishlistPanel />
+    </main>
   );
 }

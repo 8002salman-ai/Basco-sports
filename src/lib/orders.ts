@@ -13,6 +13,7 @@
  */
 
 import { SupabaseAdapter } from '@/lib/admin/db';
+import { getServiceRest, isRows } from '@/lib/supabase-rest';
 import type { AdminOrder, AdminOrderItem } from '@/lib/admin/types';
 import { sendOrderConfirmation } from '@/lib/email';
 
@@ -61,6 +62,10 @@ export async function createOrder(
   }));
   const order: AdminOrder = {
     ...candidate,
+    // Accounts are matched to orders by email, so this decides the canonical
+    // stored form (trimmed + lowercase). Reads can then match exactly instead of
+    // with a pattern, where '%' or '_' in an address would match someone else's rows.
+    customerEmail: (candidate.customerEmail || '').trim().toLowerCase(),
     id,
     orderNumber: candidate.orderNumber || orderNumberFor(id),
     items,
@@ -95,4 +100,36 @@ export async function createOrder(
   }
 
   return { order, persisted };
+}
+
+/** An order as its own customer may see it — no internal id, no payment detail. */
+export interface CustomerOrder {
+  orderNumber: string;
+  status: string;
+  items: AdminOrderItem[];
+  subtotal: number;
+  discount: number;
+  tax: number;
+  total: number;
+  currency: string;
+  coupon?: string;
+  createdAt: string;
+}
+
+/**
+ * Orders belonging to one customer email, newest first.
+ *
+ * The email always comes from a verified session, never from a request body, and
+ * it is matched exactly against the canonical form createOrder() stores.
+ * Returns [] when the DB is unconfigured or the read fails, so /account can
+ * say "orders are unavailable" instead of hard-failing.
+ */
+export async function listCustomerOrders(email: string): Promise<CustomerOrder[]> {
+  const rest = getServiceRest();
+  if (!rest) return [];
+  const res = await rest.request<CustomerOrder[]>(
+    'orders?select=orderNumber,status,items,subtotal,discount,tax,total,currency,coupon,createdAt' +
+      `&customerEmail=eq.${encodeURIComponent(email.trim().toLowerCase())}&order=createdAt.desc&limit=100`,
+  );
+  return res.ok && isRows<CustomerOrder>(res.data) ? res.data : [];
 }

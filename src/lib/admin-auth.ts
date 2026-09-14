@@ -70,7 +70,12 @@ export function getAdminConfigStatus() {
 }
 
 // ---------------------------------------------------------------------------
-// Base64 helpers – no Buffer (Edge-safe)
+// Base64 / HMAC / compare primitives – no Buffer (Edge-safe)
+//
+// Shared with the customer session (src/lib/customer-auth.ts) so there is one
+// implementation of "sign bytes with the deployment secret". Customer tokens
+// sign a different domain string, so the two cookie types can never verify as
+// each other.
 // ---------------------------------------------------------------------------
 
 export function bytesToB64(bytes: Uint8Array): string {
@@ -86,17 +91,17 @@ export function b64ToBytes(b64: string): Uint8Array {
   return bytes;
 }
 
-function bytesToB64Url(bytes: Uint8Array): string {
+export function bytesToB64Url(bytes: Uint8Array): string {
   return bytesToB64(bytes).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-function b64UrlToBytes(b64url: string): Uint8Array {
+export function b64UrlToBytes(b64url: string): Uint8Array {
   let b64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
   while (b64.length % 4) b64 += '=';
   return b64ToBytes(b64);
 }
 
-function timingSafeEqualBytes(a: Uint8Array, b: Uint8Array): boolean {
+export function timingSafeEqualBytes(a: Uint8Array, b: Uint8Array): boolean {
   if (a.length !== b.length) return false;
   let diff = 0;
   for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
@@ -174,7 +179,7 @@ export async function generatePbkdf2Hash(password: string, opts?: Partial<typeof
 // Session tokens – HMAC-SHA256 (WebCrypto, Edge + Node)
 // ---------------------------------------------------------------------------
 
-async function hmacSha256(secret: string, data: string): Promise<string> {
+export async function hmacSha256(secret: string, data: string): Promise<string> {
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(data));
   return bytesToB64Url(new Uint8Array(sig));
