@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getServerEnv } from '@/lib/env';
-import { SupabaseAdapter } from '@/lib/admin/db';
-import { sendOrderConfirmation } from '@/lib/email';
+import { createOrder } from '@/lib/orders';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'edge';
@@ -12,8 +11,8 @@ export const runtime = 'edge';
  *
  * Handles checkout.session.completed events to:
  * 1. Verify the webhook signature (prevents spoofing)
- * 2. Save the order to the orders table (Supabase or localStorage)
- * 3. Send confirmation email (future: Resend / SendGrid)
+ * 2. Save the order through the shared createOrder pipeline
+ * 3. Send confirmation email
  *
  * Set STRIPE_WEBHOOK_SECRET in env to enable signature verification.
  * Stripe Dashboard → Developers → Webhooks → Add endpoint:
@@ -80,64 +79,52 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     return;
   }
 
-  const adapter = new SupabaseAdapter(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY, env.SUPABASE_SERVICE_ROLE_KEY);
-
-  // Fetch line items from Stripe
   const stripe = new Stripe(env.STRIPE_SECRET_KEY!, {
     apiVersion: '2025-06-30.basil' as Stripe.LatestApiVersion,
   });
 
-  const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
+  // Line items carry productId/variantLabel in the product metadata that
+  // /api/checkout set at session creation — expand to read it back.
+  const lineItems = await stripe.checkout.sessions.listLineItems(session.id, {
+    expand: ['data.price.product'],
+  });
 
-  const now = new Date().toISOString();
-  const orderId = session.metadata?.orderId || `stripe_${Date.now()}`;
-  const orderNumber = `BS-${orderId.slice(-6)}`;
-
-  const order = {
-    id: orderId,
-    orderNumber,
-    customerEmail: session.customer_email || session.customer_details?.email || '',
-    customerName: session.customer_details?.name || undefined,
-    items: lineItems.data.map((item, idx) => ({
-      id: `${orderId}-${idx}`,
-      name: item.description || item.price?.product?.toString() || `Item ${idx + 1}`,
+  const items = lineItems.data.map((item, idx) => {
+    const product = item.price?.product;
+    const productData = typeof product === 'object' && product !== null && 'deleted' in product && !product.deleted
+      ? product
+      : typeof product === 'object' && product !== null && !('deleted' in product)
+        ? product
+        : undefined;
+    const meta = productData?.metadata;
+    const variantLabel = meta?.variant || undefined;
+    return {
+      productId: meta?.productId || undefined,
+      name: item.description || productData?.name || `Item ${idx + 1}`,
+      variantLabel,
       quantity: item.quantity || 1,
       price: (item.amount_total || 0) / (item.quantity || 1) / 100, // Convert cents back to dollars
-    })),
-    subtotal: (session.amount_subtotal || 0) / 100,
-    discount: session.total_details?.amount_discount ? session.total_details.amount_discount / 100 : 0,
-    tax: session.total_details?.amount_tax ? session.total_details.amount_tax / 100 : 0,
-    total: (session.amount_total || 0) / 100,
-    currency: session.currency || 'usd',
-    status: 'paid' as const,
-    coupon: session.metadata?.coupon !== 'none' ? session.metadata?.coupon : undefined,
-    createdAt: now,
-    updatedAt: now,
-  };
+    };
+  });
 
-  // Save to orders table
-  try {
-    await adapter.insert('orders', order);
-    console.log(`✅ Order ${orderNumber} saved to DB (Stripe checkout)`);
-  } catch (err) {
-    console.error(`❌ Failed to save order ${orderNumber}:`, err);
-  }
+  const order = await createOrder(
+    {
+      customerEmail: session.customer_email || session.customer_details?.email || '',
+      customerName: session.customer_details?.name || undefined,
+      items,
+      subtotal: (session.amount_subtotal || 0) / 100,
+      discount: session.total_details?.amount_discount ? session.total_details.amount_discount / 100 : 0,
+      tax: session.total_details?.amount_tax ? session.total_details.amount_tax / 100 : 0,
+      total: (session.amount_total || 0) / 100,
+      currency: session.currency || 'usd',
+      status: 'paid',
+      coupon: session.metadata?.coupon !== 'none' ? session.metadata?.coupon : undefined,
+      id: session.metadata?.orderId || undefined,
+    },
+    { supabaseUrl, serviceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY },
+  );
 
-  // Send confirmation email
-  try {
-    await sendOrderConfirmation({
-      orderNumber,
-      customerEmail: order.customerEmail,
-      items: order.items,
-      subtotal: order.subtotal,
-      discount: order.discount,
-      tax: order.tax,
-      total: order.total,
-      currency: order.currency,
-      coupon: order.coupon,
-      createdAt: order.createdAt,
-    });
-  } catch (err) {
-    console.warn(`⚠️  Email send failed for ${orderNumber}:`, err);
+  if (order.persisted) {
+    console.log(`✅ Order ${order.order?.orderNumber} saved to DB (Stripe checkout)`);
   }
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerEnv } from '@/lib/env';
+import { getServiceRest, isRows } from '@/lib/supabase-rest';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'edge';
@@ -10,28 +10,9 @@ export const runtime = 'edge';
  * matching orders only (email must match exactly).
  */
 
-async function supabaseQuery(table: string, params?: string): Promise<any[]> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '');
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return [];
-  const qs = params ? `?${params}` : '';
-  const res = await fetch(`${url}/rest/v1/${table}${qs}`, {
-    headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-    },
-  });
-  if (!res.ok) return [];
-  const data = await res.json();
-  return Array.isArray(data) ? data : [];
-}
-
 export async function GET(req: NextRequest) {
-  const env = getServerEnv();
-
-  if (!env.SUPABASE_SERVICE_ROLE_KEY || !process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  const rest = getServiceRest();
+  if (!rest) {
     return NextResponse.json({ ok: false, error: 'DB not configured' }, { status: 503 });
   }
 
@@ -43,7 +24,11 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const allOrders = await supabaseQuery('orders', 'order=createdAt.desc&limit=50');
+    const res = await rest.request('orders?order=createdAt.desc&limit=50');
+    if (!res.ok || !isRows<Record<string, any>>(res.data)) {
+      return NextResponse.json({ ok: true, data: [], count: 0 });
+    }
+    const allOrders = res.data;
 
     // Filter to matching orders
     const matched = allOrders.filter((o: any) => {

@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useCart } from "@/components/cart/CartContext";
 import { products } from "@/data/products";
 import { formatPrice } from "@/lib/utils";
-import { getDb } from "@/lib/admin/db";
+import { getDbMode, LocalStorageAdapter } from "@/lib/admin/db";
 import type { AdminOrder } from "@/lib/admin/types";
 import { Lock, ShieldCheck, CreditCard, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,10 +24,11 @@ export default function CheckoutPage() {
   const [formError, setFormError] = useState("");
   const [paymentMode, setPaymentMode] = useState<"demo" | "stripe">("demo");
 
-  // Check if Stripe is configured
+  // Check if Stripe is configured (503 when not — probe must check resp.ok,
+  // OPTIONS is auto-answered by the framework regardless of configuration)
   useEffect(() => {
     fetch("/api/checkout", { method: "OPTIONS" })
-      .then(() => setPaymentMode("stripe"))
+      .then((resp) => setPaymentMode(resp.ok ? "stripe" : "demo"))
       .catch(() => setPaymentMode("demo"));
   }, []);
 
@@ -57,6 +58,8 @@ export default function CheckoutPage() {
           price: prod.price,
           quantity: it.quantity,
           image: prod.images[0],
+          productId: it.productId,
+          variant: [it.color, it.size].filter(Boolean).join(" / ") || undefined,
         };
       });
 
@@ -93,54 +96,58 @@ export default function CheckoutPage() {
 
     setStep("processing");
     try {
-      // Persist the order so the admin Orders panel can show it
+      // Persist through the dedicated demo endpoint, which derives ids,
+      // prices and totals server-side. Never through the admin DB proxy —
+      // its auth gate is anonymous when admin env is unset.
       try {
-        const now = new Date().toISOString();
-        const orderId = `demo_order_${Date.now()}`;
-        const order: AdminOrder = {
-          id: orderId,
-          orderNumber: `BS-${String(Date.now()).slice(-6)}`,
-          customerEmail: email,
-          items: items.map((it, idx) => {
-            const p = products.find((pp) => pp.id === it.productId);
-            return {
-              id: `${orderId}-${idx}`,
-              productId: it.productId,
-              name: p?.name || it.productId,
-              variantLabel: [it.color, it.size].filter(Boolean).join(" / ") || undefined,
-              quantity: it.quantity,
-              price: p?.price ?? 0,
-            };
-          }),
-          subtotal,
-          discount: discountAmt,
-          tax,
-          total: total ?? 0,
-          currency: "usd",
-          status: "paid",
-          coupon: coupon || undefined,
-          createdAt: now,
-          updatedAt: now,
-        };
-        await getDb().insert("orders", order);
-
-        // Send confirmation email (fire-and-forget)
-        fetch("/api/orders/confirm", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            orderNumber: order.orderNumber,
+        if (getDbMode() === "supabase") {
+          const resp = await fetch("/api/orders/demo", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email,
+              coupon: coupon || undefined,
+              items: items.map((it) => ({
+                productId: it.productId,
+                color: it.color,
+                size: it.size,
+                quantity: it.quantity,
+              })),
+            }),
+          });
+          const data = await resp.json().catch(() => ({}));
+          if (!resp.ok || !data.ok) throw new Error(data.error || `Demo order failed (${resp.status})`);
+        } else {
+          // Supabase unconfigured → mirror the old getDb() fallback: local copy only.
+          const now = new Date().toISOString();
+          const orderId = `demo_order_${Date.now()}`;
+          const order: AdminOrder = {
+            id: orderId,
+            orderNumber: `BS-${String(Date.now()).slice(-6)}`,
             customerEmail: email,
-            items: order.items.map(({ name, quantity, price, variantLabel }) => ({ name, quantity, price, variantLabel })),
-            subtotal: order.subtotal,
-            discount: order.discount,
-            tax: order.tax,
-            total: order.total,
-            currency: order.currency,
-            coupon: order.coupon,
-            createdAt: order.createdAt,
-          }),
-        }).catch(() => {}); // Don't block on email
+            items: items.map((it, idx) => {
+              const p = products.find((pp) => pp.id === it.productId);
+              return {
+                id: `${orderId}-${idx}`,
+                productId: it.productId,
+                name: p?.name || it.productId,
+                variantLabel: [it.color, it.size].filter(Boolean).join(" / ") || undefined,
+                quantity: it.quantity,
+                price: p?.price ?? 0,
+              };
+            }),
+            subtotal,
+            discount: discountAmt,
+            tax,
+            total: total ?? 0,
+            currency: "usd",
+            status: "paid",
+            coupon: coupon || undefined,
+            createdAt: now,
+            updatedAt: now,
+          };
+          await new LocalStorageAdapter().insert("orders", order);
+        }
       } catch (err) {
         console.warn("Order persist skipped:", err);
       }

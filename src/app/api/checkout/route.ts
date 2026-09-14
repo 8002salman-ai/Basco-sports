@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { getServerEnv } from '@/lib/env';
+import { getServerEnv, getClientEnv } from '@/lib/env';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'edge';
@@ -10,6 +10,10 @@ interface CheckoutItem {
   price: number; // dollars
   quantity: number;
   image?: string;
+  /** Catalog id + variant label, passed through product metadata so the
+   *  webhook can attach them to the order row (verified reviews, etc.). */
+  productId?: string;
+  variant?: string;
 }
 
 interface CheckoutBody {
@@ -19,6 +23,24 @@ interface CheckoutBody {
   discountPercent?: number;
   successUrl?: string;
   cancelUrl?: string;
+}
+
+/**
+ * Configuration probe for the checkout page: answers 204 only when Stripe is
+ * actually usable, 503 otherwise. The client treats any non-ok response as
+ * "run demo checkout" — so this must never auto-succeed (framework OPTIONS
+ * would otherwise answer 204 even with no keys configured).
+ */
+export async function OPTIONS() {
+  const env = getServerEnv();
+  const clientEnv = getClientEnv();
+  if (env.PAYMENT_PROVIDER !== 'stripe' || !env.STRIPE_SECRET_KEY || !clientEnv.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
+    return NextResponse.json(
+      { ok: false, error: 'Stripe not configured – set STRIPE_SECRET_KEY + NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY in env' },
+      { status: 503 },
+    );
+  }
+  return new NextResponse(null, { status: 204 });
 }
 
 export async function POST(req: NextRequest) {
@@ -57,6 +79,9 @@ export async function POST(req: NextRequest) {
       product_data: {
         name: item.name,
         ...(item.image ? { images: [item.image] } : {}),
+        ...(item.productId || item.variant
+          ? { metadata: { ...(item.productId ? { productId: item.productId } : {}), ...(item.variant ? { variant: item.variant } : {}) } }
+          : {}),
       },
       unit_amount: Math.round(item.price * 100), // Stripe expects cents
     },
