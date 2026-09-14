@@ -28,6 +28,10 @@ export interface CustomerSession {
   userId: string;
   email: string;
   name?: string;
+  /** When the token was issued (seconds since epoch). Used for revocation. */
+  iat: number;
+  /** Must match the row's session_version in public.users. */
+  ver: number;
   exp: number;
 }
 
@@ -55,6 +59,7 @@ export interface CustomerAccount {
   name: string | null;
   verified: boolean;
   isBlocked: boolean;
+  session_version: number;
 }
 
 /**
@@ -65,19 +70,22 @@ export async function getCustomerAccount(id: string): Promise<CustomerAccount | 
   const rest = getServiceRest();
   if (!rest) return null;
   const res = await rest.request<CustomerAccount[]>(
-    `users?select=id,email,name,verified,isBlocked&id=eq.${encodeURIComponent(id)}&limit=1`,
+    `users?select=id,email,name,verified,isBlocked,session_version&id=eq.${encodeURIComponent(id)}&limit=1`,
   );
   return res.ok && isRows(res.data) ? res.data[0] : null;
 }
 
-export async function createCustomerSession(user: { id: string; email: string; name?: string }): Promise<string | null> {
+export async function createCustomerSession(user: { id: string; email: string; name?: string; sessionVersion?: number }): Promise<string | null> {
   const secret = sessionSecret();
   if (!secret) return null;
+  const now = Math.floor(Date.now() / 1000);
   const payload: CustomerSession = {
     userId: user.id,
     email: user.email,
     name: user.name,
-    exp: Math.floor(Date.now() / 1000) + CUSTOMER_SESSION_MAX_AGE,
+    iat: now,
+    ver: user.sessionVersion ?? 1,
+    exp: now + CUSTOMER_SESSION_MAX_AGE,
   };
   const body = bytesToB64Url(new TextEncoder().encode(JSON.stringify(payload)));
   return `${body}.${await hmacSha256(secret, `${SIGNING_DOMAIN}.${body}`)}`;
@@ -93,12 +101,29 @@ export async function verifyCustomerSession(token: string): Promise<CustomerSess
   const expected = await hmacSha256(secret, `${SIGNING_DOMAIN}.${body}`);
   if (!timingSafeEqualBytes(new TextEncoder().encode(signature), new TextEncoder().encode(expected))) return null;
 
+  let payload: CustomerSession;
   try {
-    const payload = JSON.parse(new TextDecoder().decode(b64UrlToBytes(body))) as CustomerSession;
+    payload = JSON.parse(new TextDecoder().decode(b64UrlToBytes(body))) as CustomerSession;
     if (!payload.userId || !payload.email || !payload.exp) return null;
     if (payload.exp < Math.floor(Date.now() / 1000)) return null;
-    return payload;
   } catch {
     return null;
   }
+
+  // Session-version check: one indexed row read. When the token was issued at
+  // a version older than the current DB value, the password was changed and
+  // every earlier token must be rejected.
+  const rest = getServiceRest();
+  if (rest) {
+    try {
+      const res = await rest.request<{ session_version: number }[]>(
+        `users?select=session_version&id=eq.${encodeURIComponent(payload.userId)}&limit=1`,
+      );
+      if (res.ok && isRows(res.data) && res.data[0]) {
+        if (res.data[0].session_version !== payload.ver) return null;
+      }
+    } catch { /* DB unreachable — HMAC-only fallback, same as pre-v2 */ }
+  }
+
+  return payload;
 }

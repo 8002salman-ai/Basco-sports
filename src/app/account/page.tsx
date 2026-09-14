@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import AccountAuth from '@/components/account/AccountAuth';
+import PasswordChangePanel from '@/components/account/PasswordChangePanel';
 import WishlistPanel from '@/components/account/WishlistPanel';
 import { CUSTOMER_SESSION_COOKIE, getCustomerAccount, verifyCustomerSession } from '@/lib/customer-auth';
 import { listCustomerOrders } from '@/lib/orders';
@@ -143,6 +144,19 @@ export default async function AccountPage() {
             ))}
           </ul>
         )}
+      </section>
+
+      <section aria-labelledby="settings-heading" className="mt-10">
+        <h2 id="settings-heading" className="font-display text-[20px]">
+          Settings
+        </h2>
+        <div className="mt-4 bg-white rounded-[20px] border border-stone-200 p-6">
+          <h3 className="text-[14px] font-medium text-obsidian/80">Change password</h3>
+          <p className="mt-1 text-[13px] text-obsidian/50">
+            Updating your password will sign you out of all other devices.
+          </p>
+          <PasswordChangePanel />
+        </div>
       </section>
 
       <WishlistPanel />

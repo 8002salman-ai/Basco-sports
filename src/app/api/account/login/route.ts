@@ -18,6 +18,7 @@ interface CustomerUser {
   name: string | null;
   password_hash: string | null;
   isBlocked: boolean | null;
+  session_version: number;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
   }
 
   const found = await rest.request<CustomerUser[]>(
-    `users?select=id,email,name,password_hash,isBlocked&email=eq.${encodeURIComponent(email)}&limit=1`,
+    `users?select=id,email,name,password_hash,isBlocked,session_version&email=eq.${encodeURIComponent(email)}&limit=1`,
   );
   if (!found.ok) {
     return NextResponse.json({ ok: false, error: 'Sign-in is not available right now.' }, { status: 503 });
@@ -77,7 +78,7 @@ export async function POST(req: NextRequest) {
     body: JSON.stringify({ lastLoginAt: new Date().toISOString() }),
   });
 
-  const token = await createCustomerSession({ id: user.id, email: user.email, name: user.name || undefined });
+  const token = await createCustomerSession({ id: user.id, email: user.email, name: user.name || undefined, sessionVersion: user.session_version });
   if (!token) {
     return NextResponse.json({ ok: false, error: 'Could not create the session.' }, { status: 500 });
   }
