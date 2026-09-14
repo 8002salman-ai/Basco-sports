@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { BrandLogo } from "@/components/layout/BrandLogo";
 
 export function Footer() {
   return (
@@ -16,13 +17,7 @@ export function Footer() {
 
         <div className="py-10 grid grid-cols-2 md:grid-cols-5 gap-8">
           <div className="col-span-2">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white rounded-[12px] flex items-center justify-center"><span className="text-obsidian font-black text-[20px] tracking-tighter">B</span></div>
-              <div className="leading-none">
-                <div className="font-display font-bold text-[22px] tracking-tight">BASCO</div>
-                <div className="text-[10px] tracking-[0.2em] opacity-70 -mt-1">SPORTS</div>
-              </div>
-            </div>
+            <BrandLogo variant="footer" />
             <p className="mt-6 text-white/60 text-[14px] leading-relaxed max-w-[320px]">Premium sports gear and apparel. Editorial curation, worldwide delivery, built to last.</p>
             <div className="mt-6 flex gap-3">
               <span className="h-9 px-4 inline-flex items-center rounded-full bg-white/10 text-[12px] tracking-wide">IG • @bascosports</span>

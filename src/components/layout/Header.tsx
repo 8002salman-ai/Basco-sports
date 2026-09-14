@@ -6,6 +6,7 @@ import { useCart } from "@/components/cart/CartContext";
 import { categories } from "@/data/products";
 import { useRouter } from "next/navigation";
 import { MarketSelector } from "@/components/market/MarketSelector";
+import { BrandLogo } from "@/components/layout/BrandLogo";
 
 export function Header() {
   const { cartCount, wishlist, setCartOpen } = useCart();
@@ -38,14 +39,8 @@ export function Header() {
           </button>
 
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 sm:gap-2.5 shrink-0 min-w-0">
-            <div className="w-8 h-8 lg:w-9 lg:h-9 bg-obsidian rounded-[10px] flex items-center justify-center shrink-0">
-              <span className="text-lime font-display font-black text-[17px] lg:text-[18px] tracking-tighter leading-none">B</span>
-            </div>
-            <div className="leading-none whitespace-nowrap">
-              <div className="font-display font-bold tracking-tight text-[19px] sm:text-[21px] lg:text-[24px]">BASCO</div>
-              <div className="font-body text-[9px] lg:text-[10px] tracking-[0.22em] -mt-0.5 opacity-70 whitespace-nowrap">SPORTS</div>
-            </div>
+          <Link href="/" aria-label="Basco Sports home" className="flex items-center gap-2 sm:gap-2.5 shrink-0 min-w-0">
+            <BrandLogo />
           </Link>
 
           {/* Search desktop */}

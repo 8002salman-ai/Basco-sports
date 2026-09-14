@@ -11,12 +11,13 @@ import { useMarket } from "@/components/market/MarketContext";
 import { quoteShipping, shippingUnavailableMessage } from "@/lib/shipping";
 import { taxSummaryFor } from "@/lib/tax";
 import { convertForDisplay } from "@/lib/currency";
+import { cn } from "@/lib/utils";
 
 export function CartDrawer() {
   const { items, cartOpen, setCartOpen, updateQty, removeFromCart, subtotal, coupon, discount, applyCoupon, removeCoupon } = useCart();
   const { countryCode, currency } = useMarket();
   const [couponInput, setCouponInput] = useState("");
-  const [couponMsg, setCouponMsg] = useState("");
+  const [couponMsg, setCouponMsg] = useState<{ ok: boolean; message: string } | null>(null);
 
   const quotes = quoteShipping(countryCode, subtotal);
   const standard = quotes.find((q) => q.id === "STANDARD_INTERNATIONAL");
@@ -88,16 +89,25 @@ export function CartDrawer() {
                   </div>
                   <Button
                     variant="secondary"
-                    onClick={() => {
-                      const res = applyCoupon(couponInput);
-                      setCouponMsg(res.message);
-                    }}
+                    onClick={() => setCouponMsg(applyCoupon(couponInput))}
                     className="shrink-0"
                   >
                     Apply
                   </Button>
                 </div>
-                {couponMsg && <div className="mt-2 text-[12px] px-3 py-2 rounded-full bg-stone-100">{couponMsg}</div>}
+                {couponMsg && (
+                  <div
+                    className={cn(
+                      "mt-2 text-[12px] px-3 py-2 rounded-full",
+                      couponMsg.ok
+                        ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
+                        : "bg-red-50 border border-red-200 text-red-700",
+                    )}
+                    role="status"
+                  >
+                    {couponMsg.message}
+                  </div>
+                )}
                 {coupon && (
                   <div className="mt-3 flex items-center justify-between p-3 rounded-xl bg-lime/30 border border-lime">
                     <span className="text-[13px] font-medium">Code {coupon} – {discount}% off</span>

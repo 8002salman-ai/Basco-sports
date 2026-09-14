@@ -10,6 +10,7 @@ import { CookieConsentBanner, CookiePreferencesModal } from "@/components/consen
 import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
 import { MarketProvider } from "@/components/market/MarketContext";
 import { MarketSuggestionBanner } from "@/components/market/MarketSelector";
+import { StorefrontChrome } from "@/components/layout/StorefrontChrome";
 import { getServerEnv } from "@/lib/env";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -49,12 +50,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ConsentProvider>
           <MarketProvider>
             <CartProvider>
-              <MarketSuggestionBanner />
-              <AnnouncementBar />
-              <Header />
-              <CartDrawer />
-              <main className="flex-1">{children}</main>
-              <Footer />
+              <StorefrontChrome
+                announcement={<><MarketSuggestionBanner /><AnnouncementBar /></>}
+                header={<Header />}
+                cartDrawer={<CartDrawer />}
+                footer={<Footer />}
+              >
+                <main className="flex-1">{children}</main>
+              </StorefrontChrome>
               <CookieConsentBanner />
               <CookiePreferencesModal />
               <GoogleAnalytics />

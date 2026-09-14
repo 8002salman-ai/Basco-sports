@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { CartItem } from "@/lib/types";
 import { products } from "@/data/products";
+import { DEMO_COUPONS } from "@/lib/coupons";
 
 interface CartContextType {
   items: CartItem[];
@@ -110,15 +111,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const applyCoupon = (code: string) => {
     const upper = code.trim().toUpperCase();
-    // demo coupons
-    const map: Record<string, number> = { BASCO10: 10, WELCOME15: 15, TRAIN20: 20 };
-    if (!map[upper]) return { ok: false, message: "Invalid coupon code.", discount: 0 };
-    // check min subtotal for demo
-    const mins: Record<string, number> = { BASCO10: 100, WELCOME15: 75, TRAIN20: 150 };
-    if (subtotal < (mins[upper] || 0)) return { ok: false, message: `Minimum $${mins[upper]} required for this coupon.`, discount: 0 };
+    const def = DEMO_COUPONS[upper];
+    if (!def) return { ok: false, message: "Invalid coupon code.", discount: 0 };
+    if (subtotal < def.minSubtotalUSD) {
+      return { ok: false, message: `Minimum $${def.minSubtotalUSD} required for this coupon.`, discount: 0 };
+    }
     setCoupon(upper);
-    setDiscount(map[upper]);
-    return { ok: true, message: `${map[upper]}% discount applied!`, discount: map[upper] };
+    setDiscount(def.discountPercent);
+    return { ok: true, message: `${def.discountPercent}% discount applied!`, discount: def.discountPercent };
   };
 
   const removeCoupon = () => {
