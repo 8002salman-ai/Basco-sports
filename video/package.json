@@ -1,0 +1,28 @@
+{
+  "name": "basco-sports-video",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Remotion map promo for Basco Sports — MapLibre technique (no API key)",
+  "scripts": {
+    "map-worker": "node scripts/sync-map-worker.mjs",
+    "studio": "npm run map-worker && remotion studio",
+    "compositions": "npm run map-worker && remotion compositions",
+    "typecheck": "tsc --noEmit",
+    "still": "npm run map-worker && remotion still src/index.ts BascoGlobePromo",
+    "sheet": "node scripts/contact-sheet.mjs",
+    "render": "npm run map-worker && remotion render src/index.ts BascoGlobePromo out/basco-globe-promo.mp4"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.524",
+    "@turf/turf": "^7.1.0",
+    "maplibre-gl": "^5.5.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.524"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "typescript": "^5.6.3"
+  }
+}
