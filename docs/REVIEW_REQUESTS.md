@@ -3,8 +3,8 @@
 Automatic, **neutral** review-request email sent once after an order is
 delivered. FTC Consumer Reviews & Testimonials Rule compliant.
 
-Status: implemented and tested end-to-end. **Dormant by design** until both
-gates below are enabled — demo orders are never emailed.
+Status: implemented; behavior verified automatically by `npm test`. **Dormant
+by design** until both gates below are enabled — demo orders are never emailed.
 
 ---
 
@@ -43,9 +43,9 @@ The email contains exactly one ask — the neutral question:
 
 Subject: `How was your Basco Sports order <orderNumber>?`
 
-Forbidden in any rendered content (automated source assertions run on every
-change): asking for 5 stars, "positive review", rewards/gifts/discounts for
-reviewing, or any incentive. No incentive program exists, so none is offered.
+Forbidden in any rendered content (asserted on every `npm test` run): asking
+for 5 stars, "positive review", rewards/gifts/discounts for reviewing, or any
+incentive. No incentive program exists, so none is offered.
 Each product links to its product page ("Share your feedback") where the
 verified-purchase review form lives; reviews then pass through the normal
 moderation queue regardless of star rating.
@@ -53,16 +53,27 @@ moderation queue regardless of star rating.
 Footer states: "You will receive at most one review request per order." —
 true by the claim mechanism.
 
-## Test evidence (2026-08-28, local dev + production Supabase)
+## Automated verification (`npm test`)
 
-| Test | Result |
+`npm test` runs `scripts/verify-review-request.mjs`, which compiles the real
+`src/lib/review-request.ts` chain (with `email.ts` + `supabase-rest.ts`) and
+drives it through its lifecycle against a stubbed Supabase REST API and a
+local HTTP stand-in for Resend. Any failed assertion exits 1.
+
+| Assertion | Behavior proven |
 |---|---|
-| Wording assertions (neutral question present; no 5-star/reward/positive-review language in rendered content) | PASS |
-| Demo mode (`COMMERCE_LIVE` unset): delivered order → no claim, no send (`reviewRequestSentAt` stays NULL) | PASS |
-| Live mode + invalid Resend key: claim taken → send fails → claim **released** (retry possible) | PASS |
-| Already-claimed order: re-trigger → no second send, marker unchanged | PASS |
-| Server log shows the real Resend call attempt (`Email send failed`) | PASS |
-| Admin order update succeeds even while the email path is failing | PASS |
+| Wording & escaping | Neutral question present exactly once; no 5-star / "positive review" / reward / gift / incentive language; order number, customer name, item names and variant labels HTML-escaped; product links slug-derived |
+| Gate: `COMMERCE_LIVE` | Off → `commerce-not-live` with zero DB calls and zero emails |
+| Guard order | Missing order → `order-not-found`; `shipped` → `not-delivered`; bad email → `no-email`; `demo_order*` id → `demo-order` — the claim is never attempted in any of these cases |
+| Happy path | Exactly one email; escaped customer content in the rendered HTML; subject carries the order number; claim marker set |
+| One per order | Re-trigger → `already-requested`, no second email |
+| Send failure | Claim won → send fails → `send-failed-claim-released`, marker back to NULL; retry then succeeds and re-claims |
+| Admin hooks | `update`/`updateBy` with a delivered patch send exactly once; non-delivered patches and garbage input never throw and never send |
+
+The originally documented manual evidence (2026-08-28, local dev + production
+Supabase: real Resend call attempt visible in logs, admin order update
+succeeding while the email path fails) is covered by the outage/release and
+swallowed-hook scenarios above, which now run automatically.
 
 ## Enabling in production (when launch gate passes)
 
@@ -80,3 +91,4 @@ true by the claim mechanism.
 - `src/lib/email.ts` — `sendRawEmail` / `isEmailConfigured` exports
 - `src/app/api/admin/db/route.ts` — hook on `orders` `update`/`updateBy`
 - `supabase/migrations/0003_review_requests.sql` — claim column
+- `scripts/verify-review-request.mjs` — automated verification (`npm test`)

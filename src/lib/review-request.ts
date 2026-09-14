@@ -22,54 +22,19 @@
  */
 
 import { isEmailConfigured, sendRawEmail } from './email';
+import { getServiceRest, type RestResult } from './supabase-rest';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://basco-sports.vercel.app';
 
 // ---------------------------------------------------------------------------
-// Supabase REST helpers (service-role, server-only, Edge-compatible)
+// Supabase REST (service-role, server-only, Edge-compatible) – shared core in
+// lib/supabase-rest.ts; unconfigured env maps to the same status-0 envelope.
 // ---------------------------------------------------------------------------
 
-interface SbResult<T> {
-  ok: boolean;
-  status: number;
-  data: T | null;
-  error?: string;
-}
-
-function svcEnv(): { url: string | undefined; key: string | undefined } {
-  return {
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, ''),
-    key: process.env.SUPABASE_SERVICE_ROLE_KEY,
-  };
-}
-
-async function sb<T>(path: string, init?: RequestInit): Promise<SbResult<T>> {
-  const { url, key } = svcEnv();
-  if (!url || !key) return { ok: false, status: 0, data: null, error: 'Supabase not configured' };
-  try {
-    const res = await fetch(`${url}/rest/v1/${path}`, {
-      ...init,
-      headers: {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-        'Content-Type': 'application/json',
-        ...((init?.headers as Record<string, string>) || {}),
-      },
-    });
-    const text = await res.text().catch(() => '');
-    let data: T | null = null;
-    if (text) {
-      try {
-        data = JSON.parse(text) as T;
-      } catch {
-        data = null;
-      }
-    }
-    if (!res.ok) return { ok: false, status: res.status, data, error: text.slice(0, 300) || `HTTP ${res.status}` };
-    return { ok: true, status: res.status, data };
-  } catch (e) {
-    return { ok: false, status: 0, data: null, error: (e as Error).message };
-  }
+async function sb<T>(path: string, init?: RequestInit): Promise<RestResult<T>> {
+  const client = getServiceRest();
+  if (!client) return { ok: false, status: 0, data: null, error: 'Supabase not configured' };
+  return client.request<T>(path, init);
 }
 
 interface OrderLike {

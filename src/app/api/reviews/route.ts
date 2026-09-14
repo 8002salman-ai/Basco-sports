@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerEnv } from '@/lib/env';
+import { getServiceRest } from '@/lib/supabase-rest';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'edge';
@@ -22,43 +22,8 @@ export const runtime = 'edge';
  */
 
 // ---------------------------------------------------------------------------
-// Supabase REST helpers (service-role, server-only)
+// Supabase REST (service-role, server-only) – shared core in lib/supabase-rest.ts
 // ---------------------------------------------------------------------------
-
-function svcEnv() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '');
-  const key = getServerEnv().SUPABASE_SERVICE_ROLE_KEY;
-  return { url, key };
-}
-
-function svcHeaders(key: string, prefer = ''): Record<string, string> {
-  const h: Record<string, string> = {
-    apikey: key,
-    Authorization: `Bearer ${key}`,
-    'Content-Type': 'application/json',
-  };
-  if (prefer) h.Prefer = prefer;
-  return h;
-}
-
-async function sbFetch<T>(url: string, key: string, init?: RequestInit): Promise<{ ok: boolean; status: number; data: T | null; error?: string }> {
-  try {
-    const res = await fetch(url, { ...init, headers: { ...svcHeaders(key, (init?.headers as Record<string, string>)?.Prefer) } });
-    const text = await res.text().catch(() => '');
-    let data: T | null = null;
-    if (text) {
-      try {
-        data = JSON.parse(text) as T;
-      } catch {
-        data = null;
-      }
-    }
-    if (!res.ok) return { ok: false, status: res.status, data, error: text.slice(0, 300) || `HTTP ${res.status}` };
-    return { ok: true, status: res.status, data };
-  } catch (e) {
-    return { ok: false, status: 0, data: null, error: (e as Error).message };
-  }
-}
 
 interface OrderRow {
   id: string;
@@ -107,24 +72,22 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'product query param required' }, { status: 400 });
   }
 
-  const { url, key } = svcEnv();
-  if (!url || !key) {
+  const rest = getServiceRest();
+  if (!rest) {
     return NextResponse.json({ ok: true, mode: 'unconfigured', reviews: [], aggregate: { rating: 0, count: 0 } });
   }
 
   // Resolve product by slug
-  const prod = await sbFetch<Array<{ id: string; name: string; slug: string }>>(
-    `${url}/rest/v1/products?slug=eq.${encodeURIComponent(slug)}&select=id,name,slug&limit=1`,
-    key,
+  const prod = await rest.request<Array<{ id: string; name: string; slug: string }>>(
+    `products?slug=eq.${encodeURIComponent(slug)}&select=id,name,slug&limit=1`,
   );
   if (!prod.ok || !prod.data?.length) {
     return NextResponse.json({ ok: true, mode: 'ok', reviews: [], aggregate: { rating: 0, count: 0 } });
   }
   const product = prod.data[0];
 
-  const rows = await sbFetch<ReviewRow[]>(
-    `${url}/rest/v1/product_reviews?productId=eq.${encodeURIComponent(product.id)}&status=eq.approved&order=createdAt.desc&limit=100`,
-    key,
+  const rows = await rest.request<ReviewRow[]>(
+    `product_reviews?productId=eq.${encodeURIComponent(product.id)}&status=eq.approved&order=createdAt.desc&limit=100`,
   );
   const reviews = Array.isArray(rows.data) ? rows.data : [];
   const count = reviews.length;
@@ -167,8 +130,8 @@ function rateLimited(ip: string): boolean {
 }
 
 export async function POST(req: NextRequest) {
-  const { url, key } = svcEnv();
-  if (!url || !key) {
+  const rest = getServiceRest();
+  if (!rest) {
     return NextResponse.json(
       { ok: false, error: 'Reviews require the store database (Supabase) to be configured.' },
       { status: 503 },
@@ -209,9 +172,8 @@ export async function POST(req: NextRequest) {
   }
 
   // 1. Resolve product by slug
-  const prod = await sbFetch<Array<{ id: string; name: string; slug: string }>>(
-    `${url}/rest/v1/products?slug=eq.${encodeURIComponent(productSlug)}&select=id,name,slug&limit=1`,
-    key,
+  const prod = await rest.request<Array<{ id: string; name: string; slug: string }>>(
+    `products?slug=eq.${encodeURIComponent(productSlug)}&select=id,name,slug&limit=1`,
   );
   if (!prod.ok) {
     return NextResponse.json({ ok: false, error: 'Product lookup failed. Try again.' }, { status: 502 });
@@ -222,9 +184,8 @@ export async function POST(req: NextRequest) {
   const product = prod.data[0];
 
   // 2. Find the order by number (case-insensitive)
-  const ord = await sbFetch<OrderRow[]>(
-    `${url}/rest/v1/orders?orderNumber=ilike.${encodeURIComponent(orderNumber)}&select=id,orderNumber,customerEmail,status,items&limit=5`,
-    key,
+  const ord = await rest.request<OrderRow[]>(
+    `orders?orderNumber=ilike.${encodeURIComponent(orderNumber)}&select=id,orderNumber,customerEmail,status,items&limit=5`,
   );
   if (!ord.ok) {
     return NextResponse.json({ ok: false, error: 'Order lookup failed. Try again.' }, { status: 502 });
@@ -259,9 +220,8 @@ export async function POST(req: NextRequest) {
   }
 
   // 4. One review per order + product
-  const dup = await sbFetch<Array<{ id: string }>>(
-    `${url}/rest/v1/product_reviews?orderId=eq.${encodeURIComponent(order.id)}&productId=eq.${encodeURIComponent(product.id)}&select=id&limit=1`,
-    key,
+  const dup = await rest.request<Array<{ id: string }>>(
+    `product_reviews?orderId=eq.${encodeURIComponent(order.id)}&productId=eq.${encodeURIComponent(product.id)}&select=id&limit=1`,
   );
   if (dup.ok && dup.data?.length) {
     return NextResponse.json({ ok: false, error: 'You have already reviewed this item with this order.' }, { status: 409 });
@@ -288,7 +248,7 @@ export async function POST(req: NextRequest) {
     updatedAt: now,
   };
 
-  const ins = await sbFetch<unknown[]>(`${url}/rest/v1/product_reviews`, key, {
+  const ins = await rest.request<unknown[]>('product_reviews', {
     method: 'POST',
     headers: { Prefer: 'return=representation' },
     body: JSON.stringify(row),
