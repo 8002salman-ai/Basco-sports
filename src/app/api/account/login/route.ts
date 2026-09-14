@@ -67,14 +67,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Best effort — a failed timestamp write must not fail a valid sign-in.
-  void rest
-    .request(`users?id=eq.${encodeURIComponent(user.id)}`, {
-      method: 'PATCH',
-      headers: { Prefer: 'return=minimal' },
-      body: JSON.stringify({ lastLoginAt: new Date().toISOString() }),
-    })
-    .catch(() => {});
+  // Awaited on purpose: on a serverless runtime the response ending can cancel
+  // un-awaited work, which is how this write silently stopped persisting.
+  // request() reports failures in its result instead of throwing, so a failed
+  // timestamp write still cannot fail a valid sign-in.
+  await rest.request(`users?id=eq.${encodeURIComponent(user.id)}`, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=minimal' },
+    body: JSON.stringify({ lastLoginAt: new Date().toISOString() }),
+  });
 
   const token = await createCustomerSession({ id: user.id, email: user.email, name: user.name || undefined });
   if (!token) {
