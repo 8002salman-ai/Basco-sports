@@ -1,6 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Plus, ShieldCheck, Wrench, LockSimple, PencilSimple, Prohibit, WarningCircle } from '@phosphor-icons/react';
+import {
+  Badge, Button, Card, Field, INPUT_CLS, Modal, Notice, PageHeader, SELECT_CLS,
+  Spinner, StatCard, StatGrid, Toggle,
+} from '@/components/admin/ui';
+import { DataTable, type Column } from '@/components/admin/table';
+import Link from 'next/link';
 
 type AdminUserRole = 'owner' | 'admin';
 
@@ -14,6 +21,9 @@ interface AdminUserRow {
   updated_at: string;
 }
 
+/** The founding owner account can never be demoted or disabled from the panel. */
+const PROTECTED_EMAIL = '8002salman@gmail.com';
+
 export function UserManagementPanel() {
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,6 +31,7 @@ export function UserManagementPanel() {
   const [accessDenied, setAccessDenied] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUserRow | null>(null);
+  const [deactivating, setDeactivating] = useState<AdminUserRow | null>(null);
 
   // Add form
   const [addEmail, setAddEmail] = useState('');
@@ -95,7 +106,7 @@ export function UserManagementPanel() {
     if (!editingUser) return;
     setEditLoading(true);
     try {
-      const patch: Record<string, any> = {
+      const patch: Record<string, unknown> = {
         id: editingUser.id,
         role: editRole,
         is_active: editActive,
@@ -123,7 +134,6 @@ export function UserManagementPanel() {
   };
 
   const handleDeactivate = async (user: AdminUserRow) => {
-    if (!confirm(`Deactivate ${user.email}? They won't be able to log in.`)) return;
     try {
       const res = await fetch('/api/admin/admin-users', {
         method: 'DELETE',
@@ -135,285 +145,200 @@ export function UserManagementPanel() {
         setError(data.error);
         return;
       }
+      setDeactivating(null);
       await loadUsers();
     } catch (e) {
       setError((e as Error).message);
     }
   };
 
-  const ownerCount = useMemo(() => users.filter(u => u.role === 'owner' && u.is_active).length, [users]);
+  const counts = useMemo(
+    () => ({
+      owners: users.filter((u) => u.role === 'owner' && u.is_active).length,
+      admins: users.filter((u) => u.role === 'admin' && u.is_active).length,
+      disabled: users.filter((u) => !u.is_active).length,
+    }),
+    [users]
+  );
 
-  if (loading) return <div className="py-20 text-center text-[14px] text-obsidian/50">Loading admin users…</div>;
+  if (loading) return <Spinner label="Loading admin users…" />;
 
   if (accessDenied) {
     return (
-      <div className="py-20 text-center">
-        <div className="text-[48px]">🔒</div>
-        <h1 className="mt-4 font-display text-[24px]">Access denied</h1>
-        <p className="mt-2 text-[13px] text-obsidian/60">
-          Only the <span className="font-semibold">👑 Owner</span> can manage team members.
-          Your account role does not have permission to view this page.
+      <Card bodyClass="p-12 text-center">
+        <LockSimple size={36} weight="bold" className="text-gray-300 mx-auto" />
+        <h1 className="mt-4 text-xl font-bold text-gray-900">Access denied</h1>
+        <p className="mt-2 text-[13px] text-gray-500">
+          Only an <strong>Owner</strong> can manage team members. Your account role does not have permission to view this page.
         </p>
-        <a href="/admin" className="mt-6 inline-flex h-10 px-5 rounded-full bg-obsidian text-white text-[13px] items-center">
-          ← Back to overview
-        </a>
-      </div>
+        <Link href="/admin" className="mt-6 inline-flex"><Button>Back to dashboard</Button></Link>
+      </Card>
     );
   }
 
+  const columns: Column<AdminUserRow>[] = [
+    { key: 'name', header: 'Name', cell: (u) => <span className="font-medium text-gray-900">{u.name}</span>, sortValue: (u) => u.name },
+    { key: 'email', header: 'Email', cell: (u) => <span className="text-gray-600">{u.email}</span>, sortValue: (u) => u.email },
+    {
+      key: 'role',
+      header: 'Role',
+      cell: (u) => (
+        <Badge tone={u.role === 'owner' ? 'amber' : 'violet'}>
+          <span className="inline-flex items-center gap-1">
+            {u.role === 'owner' ? <ShieldCheck size={11} weight="fill" /> : <Wrench size={11} />}
+            {u.role}
+          </span>
+        </Badge>
+      ),
+      sortValue: (u) => u.role,
+    },
+    { key: 'status', header: 'Status', cell: (u) => <Badge tone={u.is_active ? 'green' : 'red'}>{u.is_active ? 'active' : 'disabled'}</Badge>, sortValue: (u) => (u.is_active ? 1 : 0) },
+    { key: 'created', header: 'Created', cell: (u) => <span className="text-gray-500">{new Date(u.created_at).toLocaleDateString('en-GB')}</span>, sortValue: (u) => u.created_at },
+  ];
+
   return (
-    <div>
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="font-display text-[28px] leading-none">Team Management</h1>
-          <p className="mt-1.5 text-[13px] text-obsidian/60">
-            Manage admin accounts. Owner has full access, Admin has limited access (catalog, orders, settings).
-          </p>
-        </div>
-        <button
-          onClick={() => { setShowAdd(!showAdd); setAddError(null); }}
-          className="h-10 px-5 rounded-full bg-obsidian text-white text-[13px] font-semibold"
-        >
-          + Add user
-        </button>
-      </div>
+    <div className="space-y-4">
+      <PageHeader
+        title="Team Management"
+        subtitle="Owner accounts have full access; Admin accounts are limited to catalogue, orders and read-only settings."
+        actions={<Button onClick={() => { setShowAdd(!showAdd); setAddError(null); }}><Plus size={14} weight="bold" /> Add user</Button>}
+      />
+
+      <StatGrid cols={3}>
+        <StatCard label="Owners" value={counts.owners} hint="full access" icon={<ShieldCheck size={15} weight="bold" />} tone="amber" />
+        <StatCard label="Admins" value={counts.admins} hint="limited access" icon={<Wrench size={15} weight="bold" />} tone="violet" />
+        <StatCard label="Disabled" value={counts.disabled} hint="cannot sign in" icon={<Prohibit size={15} weight="bold" />} tone="rose" />
+      </StatGrid>
 
       {error && (
-        <div className="mt-4 rounded-[12px] bg-red-50 border border-red-200 p-3 text-[13px] text-red-700">
-          {error}
-          <button onClick={() => setError(null)} className="ml-2 underline">dismiss</button>
-        </div>
+        <Notice tone="red">
+          <span className="inline-flex items-start gap-1.5">
+            <WarningCircle size={13} weight="fill" className="mt-px" />
+            {error}
+          </span>
+          <button onClick={() => setError(null)} className="ml-2 underline font-semibold">Dismiss</button>
+        </Notice>
       )}
 
-      {/* Add User Form */}
       {showAdd && (
-        <div className="mt-6 bg-white rounded-[16px] border p-6">
-          <h3 className="font-semibold text-[15px]">Add Admin User</h3>
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-[12px] opacity-60">Email</label>
-              <input
-                value={addEmail}
-                onChange={e => setAddEmail(e.target.value)}
-                type="email"
-                required
-                placeholder="user@example.com"
-                className="mt-1 w-full h-10 px-4 rounded-[10px] border border-stone-200 text-[13px]"
-              />
-            </div>
-            <div>
-              <label className="text-[12px] opacity-60">Password</label>
-              <input
-                value={addPassword}
-                onChange={e => setAddPassword(e.target.value)}
-                type="password"
-                required
-                placeholder="Min 4 characters"
-                className="mt-1 w-full h-10 px-4 rounded-[10px] border border-stone-200 text-[13px]"
-              />
-            </div>
-            <div>
-              <label className="text-[12px] opacity-60">Name</label>
-              <input
-                value={addName}
-                onChange={e => setAddName(e.target.value)}
-                placeholder="Display name"
-                className="mt-1 w-full h-10 px-4 rounded-[10px] border border-stone-200 text-[13px]"
-              />
-            </div>
-            <div>
-              <label className="text-[12px] opacity-60">Role</label>
-              <select
-                value={addRole}
-                onChange={e => setAddRole(e.target.value as AdminUserRole)}
-                className="mt-1 w-full h-10 px-4 rounded-[10px] border border-stone-200 text-[13px]"
-              >
+        <Card title="Add admin user">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Email" required>
+              <input value={addEmail} onChange={(e) => setAddEmail(e.target.value)} type="email" placeholder="user@example.com" className={INPUT_CLS} />
+            </Field>
+            <Field label="Password" required hint="Minimum 4 characters.">
+              <input value={addPassword} onChange={(e) => setAddPassword(e.target.value)} type="password" placeholder="••••••••" className={INPUT_CLS} />
+            </Field>
+            <Field label="Name">
+              <input value={addName} onChange={(e) => setAddName(e.target.value)} placeholder="Display name" className={INPUT_CLS} />
+            </Field>
+            <Field label="Role">
+              <select value={addRole} onChange={(e) => setAddRole(e.target.value as AdminUserRole)} className={`${SELECT_CLS} w-full`}>
                 <option value="admin">Admin — limited access</option>
                 <option value="owner">Owner — full access</option>
               </select>
-            </div>
+            </Field>
           </div>
-          {addError && (
-            <div className="mt-3 p-3 rounded-xl bg-red-50 border border-red-200 text-[13px] text-red-700">{addError}</div>
-          )}
-          <div className="mt-4 flex gap-3">
-            <button
-              onClick={handleAdd}
-              disabled={addLoading || !addEmail || !addPassword}
-              className="h-10 px-5 rounded-full bg-obsidian text-white text-[13px] font-semibold disabled:opacity-50"
-            >
-              {addLoading ? 'Creating…' : 'Create user'}
-            </button>
-            <button
-              onClick={() => { setShowAdd(false); setAddError(null); }}
-              className="h-10 px-5 rounded-full border border-stone-200 text-[13px]"
-            >
-              Cancel
-            </button>
+          {addError && <div className="mt-3"><Notice tone="red">{addError}</Notice></div>}
+          <div className="mt-4 flex gap-2">
+            <Button onClick={handleAdd} disabled={addLoading || !addEmail || !addPassword}>{addLoading ? 'Creating…' : 'Create user'}</Button>
+            <Button variant="secondary" onClick={() => { setShowAdd(false); setAddError(null); }}>Cancel</Button>
           </div>
-        </div>
+        </Card>
       )}
 
-      {/* Users Table */}
-      <div className="mt-6 bg-white rounded-[16px] border overflow-hidden">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="border-b bg-stone-50 text-[11px] tracking-wider uppercase text-obsidian/50">
-              <th className="px-4 py-3 font-semibold">Name</th>
-              <th className="px-4 py-3 font-semibold">Email</th>
-              <th className="px-4 py-3 font-semibold">Role</th>
-              <th className="px-4 py-3 font-semibold">Status</th>
-              <th className="px-4 py-3 font-semibold hidden md:table-cell">Created</th>
-              <th className="px-4 py-3 font-semibold">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map(user => (
-              <tr key={user.id} className="border-b last:border-0 hover:bg-stone-50/60">
-                <td className="px-4 py-3 text-[13px] font-medium">{user.name}</td>
-                <td className="px-4 py-3 text-[13px] text-obsidian/70">{user.email}</td>
-                <td className="px-4 py-3">
-                  <span className={`px-2 py-0.5 rounded-full border text-[11px] ${
-                    user.role === 'owner'
-                      ? 'bg-amber-50 text-amber-700 border-amber-200'
-                      : 'bg-violet-50 text-violet-700 border-violet-200'
-                  }`}>
-                    {user.role === 'owner' ? '👑 Owner' : '🔧 Admin'}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  {user.is_active ? (
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px]">Active</span>
-                  ) : (
-                    <span className="px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 text-[11px]">Disabled</span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-[12px] text-obsidian/50 hidden md:table-cell">
-                  {new Date(user.created_at).toLocaleDateString()}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        setEditingUser(user);
-                        setEditRole(user.role);
-                        setEditActive(user.is_active);
-                        setEditPassword('');
-                      }}
-                      className="px-3 py-1 rounded-full border border-stone-200 text-[11px] hover:bg-stone-50"
-                    >
-                      Edit
-                    </button>
-                    {user.is_active && user.email !== '8002salman@gmail.com' && (
-                      <button
-                        onClick={() => handleDeactivate(user)}
-                        className="px-3 py-1 rounded-full border border-red-200 text-[11px] text-red-600 hover:bg-red-50"
-                      >
-                        Disable
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Permission Guide */}
-      <div className="mt-6 bg-white rounded-[16px] border p-6">
-        <h3 className="font-semibold text-[15px]">Permission Guide</h3>
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-[13px]">
-          <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
-            <div className="font-semibold text-amber-800">👑 Owner</div>
-            <ul className="mt-2 space-y-1 text-amber-700 text-[12px]">
-              <li>• Full catalog access (view, edit, delete, upload)</li>
-              <li>• Full orders management</li>
-              <li>• User management (add, edit, block)</li>
-              <li>• Team management (add, edit, remove users)</li>
-              <li>• Integrations (view, edit)</li>
-              <li>• Settings (view, edit)</li>
-              <li>• Hermes Intel (view, edit)</li>
-            </ul>
-          </div>
-          <div className="p-4 rounded-xl bg-violet-50 border border-violet-200">
-            <div className="font-semibold text-violet-800">🔧 Admin</div>
-            <ul className="mt-2 space-y-1 text-violet-700 text-[12px]">
-              <li>• Catalog (view, edit — no delete)</li>
-              <li>• Orders (view, update status)</li>
-              <li>• Users (view only)</li>
-              <li>• Settings (view only)</li>
-              <li>• Integrations (view only)</li>
-              <li>• Hermes Intel (view only)</li>
-              <li>• ❌ Cannot manage team</li>
-              <li>• ❌ Cannot delete products</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      {/* Edit Modal */}
-      {editingUser && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[20px] p-6 max-w-md w-full">
-            <h3 className="font-display text-[20px]">Edit: {editingUser.name}</h3>
-            <p className="mt-1 text-[13px] text-obsidian/60">{editingUser.email}</p>
-            
-            <div className="mt-6 space-y-4">
-              <div>
-                <label className="text-[12px] opacity-60">New Password (leave blank to keep current)</label>
-                <input
-                  value={editPassword}
-                  onChange={e => setEditPassword(e.target.value)}
-                  type="password"
-                  placeholder="••••••••"
-                  className="mt-1 w-full h-10 px-4 rounded-[10px] border border-stone-200 text-[13px]"
-                />
-              </div>
-              <div>
-                <label className="text-[12px] opacity-60">Role</label>
-                <select
-                  value={editRole}
-                  onChange={e => setEditRole(e.target.value as AdminUserRole)}
-                  disabled={editingUser.email === '8002salman@gmail.com'}
-                  className="mt-1 w-full h-10 px-4 rounded-[10px] border border-stone-200 text-[13px]"
-                >
-                  <option value="admin">Admin</option>
-                  <option value="owner">Owner</option>
-                </select>
-                {editingUser.email === '8002salman@gmail.com' && (
-                  <p className="mt-1 text-[11px] text-obsidian/50">Owner account cannot be changed</p>
-                )}
-              </div>
-              <div className="flex items-center gap-3">
-                <label className="text-[12px] opacity-60">Active</label>
+      <Card bodyClass="p-4">
+        <DataTable
+          rows={users}
+          columns={columns}
+          perPage={10}
+          empty={{ title: 'No admin users yet', hint: 'Add a teammate to give them console access.', icon: <ShieldCheck size={16} /> }}
+          rowActions={(u) => (
+            <div className="flex items-center justify-end gap-1">
+              <button
+                type="button"
+                onClick={() => { setEditingUser(u); setEditRole(u.role); setEditActive(u.is_active); setEditPassword(''); }}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100"
+                aria-label={`Edit ${u.name}`}
+                title="Edit"
+              >
+                <PencilSimple size={14} />
+              </button>
+              {u.is_active && u.email !== PROTECTED_EMAIL && (
                 <button
-                  onClick={() => setEditActive(!editActive)}
-                  className={`w-10 h-6 rounded-full transition-colors ${editActive ? 'bg-emerald-500' : 'bg-stone-300'}`}
+                  type="button"
+                  onClick={() => setDeactivating(u)}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50"
+                  aria-label={`Disable ${u.name}`}
+                  title="Disable"
                 >
-                  <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${editActive ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  <Prohibit size={14} />
                 </button>
-              </div>
+              )}
             </div>
+          )}
+        />
+      </Card>
 
-            <div className="mt-6 flex gap-3">
-              <button
-                onClick={handleEdit}
-                disabled={editLoading}
-                className="h-10 px-5 rounded-full bg-obsidian text-white text-[13px] font-semibold disabled:opacity-50"
-              >
-                {editLoading ? 'Saving…' : 'Save changes'}
-              </button>
-              <button
-                onClick={() => { setEditingUser(null); setEditPassword(''); }}
-                className="h-10 px-5 rounded-full border border-stone-200 text-[13px]"
-              >
-                Cancel
-              </button>
+      <div className="grid sm:grid-cols-2 gap-3">
+        <Card title={<span className="inline-flex items-center gap-1.5"><ShieldCheck size={14} weight="fill" className="text-amber-500" /> Owner</span>} bodyClass="p-4">
+          <ul className="space-y-1.5 text-[12px] text-gray-700">
+            {[
+              'Full catalog access — view, edit, delete, upload',
+              'Full orders management',
+              'Customer user management',
+              'Team management (this screen)',
+              'Integrations and settings (view, edit)',
+              'AI Intelligence (view, edit)',
+            ].map((t) => <li key={t} className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span>{t}</li>)}
+          </ul>
+        </Card>
+        <Card title={<span className="inline-flex items-center gap-1.5"><Wrench size={14} className="text-violet-500" /> Admin</span>} bodyClass="p-4">
+          <ul className="space-y-1.5 text-[12px] text-gray-700">
+            {[
+              'Catalog — view, edit (no delete)',
+              'Orders — view, update status',
+              'Users — view only',
+              'Settings and integrations — view only',
+              'AI Intelligence — view only',
+              'Cannot manage team members',
+            ].map((t) => <li key={t} className="flex items-start gap-2"><span className="text-gray-400 mt-0.5">•</span>{t}</li>)}
+            <li className="flex items-start gap-2 text-rose-600"><Prohibit size={13} className="mt-0.5" /> Cannot delete products</li>
+          </ul>
+        </Card>
+      </div>
+
+      <Modal open={!!editingUser} onClose={() => { setEditingUser(null); setEditPassword(''); }} title={editingUser ? `Edit ${editingUser.name}` : 'Edit user'}>
+        {editingUser && (
+          <div className="space-y-4">
+            <p className="text-[12px] text-gray-500">{editingUser.email}</p>
+            <Field label="New password" hint="Leave blank to keep the current password.">
+              <input value={editPassword} onChange={(e) => setEditPassword(e.target.value)} type="password" placeholder="••••••••" className={INPUT_CLS} />
+            </Field>
+            <Field label="Role" hint={editingUser.email === PROTECTED_EMAIL ? 'The founding owner account cannot be changed.' : undefined}>
+              <select value={editRole} onChange={(e) => setEditRole(e.target.value as AdminUserRole)} disabled={editingUser.email === PROTECTED_EMAIL} className={`${SELECT_CLS} w-full disabled:opacity-60`}>
+                <option value="admin">Admin</option>
+                <option value="owner">Owner</option>
+              </select>
+            </Field>
+            <Toggle on={editActive} onChange={setEditActive} label={editActive ? 'Active' : 'Disabled'} />
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="secondary" onClick={() => { setEditingUser(null); setEditPassword(''); }}>Cancel</Button>
+              <Button onClick={handleEdit} disabled={editLoading}>{editLoading ? 'Saving…' : 'Save changes'}</Button>
             </div>
           </div>
+        )}
+      </Modal>
+
+      <Modal open={!!deactivating} onClose={() => setDeactivating(null)} title="Disable admin user">
+        <p className="text-[13px] text-gray-600">
+          Disable <strong>{deactivating?.name}</strong> ({deactivating?.email})? They will keep their account but cannot sign in to the console.
+        </p>
+        <div className="mt-4 flex justify-end gap-2">
+          <Button variant="secondary" onClick={() => setDeactivating(null)}>Cancel</Button>
+          <Button variant="danger" onClick={() => deactivating && handleDeactivate(deactivating)}>Disable user</Button>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

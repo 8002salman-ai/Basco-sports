@@ -1,9 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { FloppyDisk, GearSix } from '@phosphor-icons/react';
 import { getDb } from '@/lib/admin/db';
 import { StoreSettings } from '@/lib/admin/types';
-import { DbStatus } from './DbStatus';
+import { Button, Card, Field, INPUT_CLS, Notice, PageHeader, SELECT_CLS, Spinner } from '@/components/admin/ui';
+
 
 const DEFAULT_SETTINGS: StoreSettings = {
   key: 'basco-store',
@@ -58,91 +60,41 @@ export function SettingsPanel() {
     }
   };
 
-  if (loading) return <div className="py-20 text-center text-[14px] text-obsidian/50">Loading settings…</div>;
-
-  const inputCls =
-    'w-full h-10 px-3 rounded-[10px] border border-stone-200 bg-white text-[13px] focus:outline-none focus:ring-2 focus:ring-lime-300';
+  if (loading) return <Spinner label="Loading settings…" />;
 
   return (
-    <div className="max-w-2xl">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="font-display text-[28px] leading-none">Settings</h1>
-          <p className="mt-1.5 text-[13px] text-obsidian/60 flex items-center gap-2">
-            <DbStatus /> Store profile
-          </p>
-        </div>
-      </div>
+    <div className="space-y-4 max-w-3xl">
+      <PageHeader title="Settings" subtitle="Store profile and storefront defaults" />
 
-      {error && (
-        <div className="mt-4 rounded-[12px] bg-red-50 border border-red-200 p-3 text-[13px] text-red-700">{error}</div>
-      )}
-      {savedMsg && (
-        <div className="mt-4 rounded-[12px] bg-emerald-50 border border-emerald-200 p-3 text-[13px] text-emerald-700">
-          {savedMsg}
-        </div>
-      )}
+      {error && <Notice tone="red">{error}</Notice>}
+      {savedMsg && <Notice tone="green">{savedMsg}</Notice>}
 
-      <div className="mt-6 bg-white rounded-[16px] border p-6 space-y-4">
-        <div>
-          <label className="text-[11px] font-semibold uppercase tracking-wider text-obsidian/50">Store name</label>
-          <input
-            value={settings.storeName}
-            onChange={(e) => setSettings({ ...settings, storeName: e.target.value })}
-            className={`${inputCls} mt-1`}
-          />
-        </div>
-        <div>
-          <label className="text-[11px] font-semibold uppercase tracking-wider text-obsidian/50">Support email</label>
-          <input
-            value={settings.supportEmail}
-            onChange={(e) => setSettings({ ...settings, supportEmail: e.target.value })}
-            className={`${inputCls} mt-1`}
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-obsidian/50">Currency</label>
-            <input
-              value={settings.currency}
-              onChange={(e) => setSettings({ ...settings, currency: e.target.value.toUpperCase() })}
-              className={`${inputCls} mt-1`}
-            />
-          </div>
-          <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-obsidian/50">Payment provider</label>
-            <select
-              value={settings.paymentProvider}
-              onChange={(e) => setSettings({ ...settings, paymentProvider: e.target.value })}
-              className={`${inputCls} mt-1`}
-            >
+      <Card title={<span className="flex items-center gap-2"><GearSix size={15} weight="bold" /> Store profile</span>} bodyClass="p-4 space-y-4">
+        <Field label="Store name">
+          <input value={settings.storeName} onChange={(e) => setSettings({ ...settings, storeName: e.target.value })} className={INPUT_CLS} />
+        </Field>
+        <Field label="Support email">
+          <input value={settings.supportEmail} onChange={(e) => setSettings({ ...settings, supportEmail: e.target.value })} className={INPUT_CLS} />
+        </Field>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <Field label="Currency">
+            <input value={settings.currency} onChange={(e) => setSettings({ ...settings, currency: e.target.value.toUpperCase() })} className={INPUT_CLS} />
+          </Field>
+          <Field label="Payment provider" hint="The storefront stays in demo mode until real keys exist.">
+            <select value={settings.paymentProvider} onChange={(e) => setSettings({ ...settings, paymentProvider: e.target.value })} className={`${SELECT_CLS} w-full`}>
               <option value="demo">Demo</option>
               <option value="stripe">Stripe</option>
               <option value="paypal">PayPal</option>
             </select>
-          </div>
+          </Field>
         </div>
-        <div>
-          <label className="text-[11px] font-semibold uppercase tracking-wider text-obsidian/50">
-            Announcement (shown on storefront)
-          </label>
-          <input
-            value={settings.announcement || ''}
-            onChange={(e) => setSettings({ ...settings, announcement: e.target.value })}
-            placeholder="e.g. Free shipping over $100"
-            className={`${inputCls} mt-1`}
-          />
+        <Field label="Announcement" hint="Shown in the storefront announcement bar.">
+          <input value={settings.announcement || ''} onChange={(e) => setSettings({ ...settings, announcement: e.target.value })} placeholder="e.g. Free shipping over $150" className={INPUT_CLS} />
+        </Field>
+        <div className="flex justify-end">
+          <Button onClick={save} disabled={saving}><FloppyDisk size={14} weight="bold" /> {saving ? 'Saving…' : 'Save settings'}</Button>
         </div>
-        <div className="pt-2 flex justify-end">
-          <button
-            onClick={save}
-            disabled={saving}
-            className="h-10 px-6 rounded-full bg-obsidian text-white text-[13px] font-medium disabled:opacity-50"
-          >
-            {saving ? 'Saving…' : 'Save settings'}
-          </button>
-        </div>
-      </div>
+      </Card>
     </div>
   );
 }

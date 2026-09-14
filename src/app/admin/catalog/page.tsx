@@ -1,13 +1,5 @@
-import { AdminPanelGuard, adminRuntime } from '@/lib/admin/guard';
-import { CatalogPanel } from '../_panels/CatalogPanel';
+import { redirect } from 'next/navigation';
 
-export const dynamic = adminRuntime.dynamic;
-export const runtime = adminRuntime.runtime;
-
-export default async function AdminCatalogPage() {
-  return (
-    <AdminPanelGuard>
-      <CatalogPanel />
-    </AdminPanelGuard>
-  );
+export default function AdminCatalogPage() {
+  redirect('/admin/products');
 }

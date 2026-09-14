@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Eye, EyeOff, Save, Cloud, Database, Check, AlertCircle, RefreshCw } from 'lucide-react';
+import { Cloud, Database, Eye, EyeSlash, FloppyDisk, CheckCircle, WarningCircle, ArrowsClockwise, ArrowUpRight } from '@phosphor-icons/react';
+import { Badge, Button, Card, Field as FormField, INPUT_CLS, Notice, PageHeader, Spinner } from '@/components/admin/ui';
 
 interface Settings {
   cloudflareApiToken: string;
@@ -63,65 +64,61 @@ async function dbCall(action: string, table: string, payload?: Record<string, un
   return json.data;
 }
 
-function Field({ field, value, onChange }: { field: FieldDef; value: string; onChange: (v: string) => void }) {
+function CredentialField({ field, value, onChange }: { field: FieldDef; value: string; onChange: (v: string) => void }) {
   const [show, setShow] = useState(false);
-  const hasValue = value.length > 0;
   return (
-    <div className="space-y-1.5">
-      <label className="text-[11px] font-semibold uppercase tracking-wider text-obsidian/50 flex items-center gap-2">
-        {field.label}
-        {field.secret && <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-50 text-red-600 border border-red-200">SECRET</span>}
-      </label>
+    <FormField label={field.label} hint={field.hint}>
       <div className="relative">
         <input
           type={field.secret && !show ? 'password' : 'text'}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={field.placeholder}
-          className="w-full h-10 px-3 pr-10 rounded-[10px] border border-stone-200 bg-white text-[13px] font-mono focus:outline-none focus:ring-2 focus:ring-lime-300"
+          className={`${INPUT_CLS} font-mono pr-10`}
         />
         {field.secret && (
-          <button type="button" onClick={() => setShow(!show)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-obsidian/40 hover:text-obsidian/70">
-            {show ? <EyeOff size={14} /> : <Eye size={14} />}
+          <button type="button" onClick={() => setShow(!show)} aria-label={show ? 'Hide value' : 'Show value'} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700">
+            {show ? <EyeSlash size={14} /> : <Eye size={14} />}
           </button>
         )}
       </div>
-      {field.hint && <p className="text-[11px] text-obsidian/40">{field.hint}</p>}
-      {hasValue && <p className="text-[10px] text-emerald-600 flex items-center gap-1"><Check size={10} /> Saved ({mask(value, 6)})</p>}
-    </div>
+      {field.secret && value.length > 0 && (
+        <p className="text-[10px] text-emerald-600 mt-1 flex items-center gap-1"><CheckCircle size={10} weight="fill" /> Saved ({mask(value, 6)})</p>
+      )}
+    </FormField>
   );
 }
 
-function Section({ icon: Icon, title, color, fields, values, onChange }: {
-  icon: typeof Cloud; title: string; color: string; fields: FieldDef[]; values: Settings; onChange: (k: keyof Settings, v: string) => void;
+function CredentialSection({ icon: Icon, title, tone, fields, values, onChange }: {
+  icon: typeof Cloud; title: string; tone: string; fields: FieldDef[]; values: Settings; onChange: (k: keyof Settings, v: string) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const filled = fields.filter((f) => values[f.key]).length;
+  const state = filled === fields.length ? 'connected' : filled > 0 ? 'partial' : 'not configured';
+
   return (
-    <div className="bg-white rounded-[20px] border overflow-hidden">
-      <button onClick={() => setCollapsed(!collapsed)} className="w-full flex items-center justify-between p-5 hover:bg-stone-50/50 transition-colors">
-        <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${color}`}><Icon size={18} /></div>
-          <div className="text-left">
-            <h3 className="font-semibold text-[15px]">{title}</h3>
-            <p className="text-[11px] text-obsidian/50 mt-0.5">{filled}/{fields.length} fields configured</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {filled === fields.length ? <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">Connected</span>
-            : filled > 0 ? <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-bold">Partial</span>
-            : <span className="px-2.5 py-1 rounded-full bg-stone-100 text-stone-500 text-[11px]">Not configured</span>}
-          <span className="text-obsidian/30 text-[13px]">{collapsed ? '▼' : '▲'}</span>
-        </div>
-      </button>
-      {!collapsed && (
-        <div className="px-5 pb-5 border-t border-stone-100">
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {fields.map((f) => <Field key={f.key} field={f} value={values[f.key] || ''} onChange={(v) => onChange(f.key, v)} />)}
-          </div>
-        </div>
-      )}
-    </div>
+    <Card
+      title={
+        <span className="flex items-center gap-2">
+          <span className={`w-7 h-7 rounded-lg flex items-center justify-center ${tone}`}><Icon size={15} weight="bold" /></span>
+          {title}
+          <span className="text-[11px] font-normal text-gray-400">{filled}/{fields.length} configured</span>
+        </span>
+      }
+      actions={
+        <>
+          <Badge tone={state === 'connected' ? 'green' : state === 'partial' ? 'amber' : 'gray'}>{state}</Badge>
+          <Button variant="ghost" className="h-8 px-2" onClick={() => setCollapsed(!collapsed)}>{collapsed ? 'Expand' : 'Collapse'}</Button>
+        </>
+      }
+      bodyClass={collapsed ? 'hidden' : 'p-4'}
+    >
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {fields.map((f) => (
+          <CredentialField key={f.key} field={f} value={values[f.key] || ''} onChange={(v) => onChange(f.key, v)} />
+        ))}
+      </div>
+    </Card>
   );
 }
 
@@ -181,47 +178,48 @@ export function IntegrationsPanel() {
     } finally { setSaving(false); }
   };
 
-  if (loading) return <div className="py-20 text-center text-[14px] text-obsidian/50">Loading integrations…</div>;
+  if (loading) return <Spinner label="Loading integrations…" />;
 
   return (
-    <div>
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="font-display text-[28px] leading-none">Integrations</h1>
-          <p className="mt-1.5 text-[13px] text-obsidian/60">Configure API keys and credentials for external services</p>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => window.location.reload()} className="h-10 px-4 rounded-full border bg-white text-[13px] flex items-center gap-2 hover:bg-stone-50">
-            <RefreshCw size={13} /> Refresh
-          </button>
-          <button onClick={() => void save()} disabled={saving} className="h-10 px-5 rounded-full bg-obsidian text-white text-[13px] font-medium flex items-center gap-2 disabled:opacity-50">
-            <Save size={13} /> {saving ? 'Saving…' : 'Save all'}
-          </button>
-        </div>
-      </div>
+    <div className="space-y-4">
+      <PageHeader
+        title="Integrations"
+        subtitle="API keys and credentials for the services this deployment talks to."
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => window.location.reload()}><ArrowsClockwise size={14} weight="bold" /> Refresh</Button>
+            <Button onClick={() => void save()} disabled={saving}><FloppyDisk size={14} weight="bold" /> {saving ? 'Saving…' : 'Save all'}</Button>
+          </>
+        }
+      />
 
-      {error && <div className="mt-4 rounded-[12px] bg-red-50 border border-red-200 p-3 text-[13px] text-red-700 flex items-center gap-2"><AlertCircle size={14} /> {error}</div>}
-      {savedMsg && <div className="mt-4 rounded-[12px] bg-emerald-50 border border-emerald-200 p-3 text-[13px] text-emerald-700 flex items-center gap-2"><Check size={14} /> {savedMsg}</div>}
+      {error && <Notice tone="red"><span className="inline-flex items-center gap-1.5"><WarningCircle size={13} weight="fill" /> {error}</span></Notice>}
+      {savedMsg && <Notice tone="green"><span className="inline-flex items-center gap-1.5"><CheckCircle size={13} weight="fill" /> {savedMsg}</span></Notice>}
 
-      <div className="mt-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-800 flex items-start gap-2">
-        <AlertCircle size={14} className="shrink-0 mt-0.5" />
-        <div><span className="font-semibold">Security:</span> Credentials stored in your database, served only through the admin API. Never share publicly. Secret fields are masked — re-enter to update.</div>
-      </div>
+      <Notice tone="amber">
+        <strong>Security:</strong> credentials are stored in the database and served only through the authenticated admin API. Secret fields are masked — re-enter a value to update it, and never share these publicly.
+      </Notice>
 
-      <div className="mt-6 space-y-4">
-        <Section icon={Cloud} title="Cloudflare" color="bg-orange-50 text-orange-600" fields={CF_FIELDS} values={settings} onChange={update} />
-        <Section icon={Database} title="Supabase" color="bg-green-50 text-green-600" fields={SB_FIELDS} values={settings} onChange={update} />
-      </div>
+      <CredentialSection icon={Cloud} title="Cloudflare" tone="bg-orange-50 text-orange-600" fields={CF_FIELDS} values={settings} onChange={update} />
+      <CredentialSection icon={Database} title="Supabase" tone="bg-emerald-50 text-emerald-600" fields={SB_FIELDS} values={settings} onChange={update} />
 
-      <div className="mt-6 grid sm:grid-cols-2 gap-3">
-        <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 rounded-[14px] bg-white border hover:border-orange-300 transition-colors">
-          <Cloud size={16} className="text-orange-500" />
-          <div><div className="text-[13px] font-medium">Create Cloudflare API Token</div><div className="text-[11px] text-obsidian/50">dash.cloudflare.com → My Profile → API Tokens</div></div>
-        </a>
-        <a href="https://supabase.com/dashboard/project/_/settings/api" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 rounded-[14px] bg-white border hover:border-green-300 transition-colors">
-          <Database size={16} className="text-green-500" />
-          <div><div className="text-[13px] font-medium">Supabase API Settings</div><div className="text-[11px] text-obsidian/50">Dashboard → Settings → API keys</div></div>
-        </a>
+      <div className="grid sm:grid-cols-2 gap-3">
+        {[
+          { href: 'https://dash.cloudflare.com/profile/api-tokens', icon: Cloud, tone: 'text-orange-500', title: 'Create Cloudflare API token', hint: 'dash.cloudflare.com → My Profile → API Tokens' },
+          { href: 'https://supabase.com/dashboard/project/_/settings/api', icon: Database, tone: 'text-emerald-500', title: 'Supabase API settings', hint: 'Dashboard → Settings → API keys' },
+        ].map((l) => {
+          const Icon = l.icon;
+          return (
+            <a key={l.href} href={l.href} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-xl bg-white border border-gray-100 p-4 hover:border-gray-200 hover:shadow-sm transition-all">
+              <Icon size={16} className={l.tone} />
+              <div className="min-w-0 flex-1">
+                <div className="text-[13px] font-medium text-gray-900">{l.title}</div>
+                <div className="text-[11px] text-gray-500">{l.hint}</div>
+              </div>
+              <ArrowUpRight size={13} className="text-gray-300" />
+            </a>
+          );
+        })}
       </div>
     </div>
   );

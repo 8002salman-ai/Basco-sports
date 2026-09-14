@@ -1,22 +1,26 @@
-"use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { SignIn, WarningCircle } from '@phosphor-icons/react';
+import { Button, Card, Field, INPUT_CLS, Notice } from '@/components/admin/ui';
+import { BrandMark } from '@/components/layout/BrandLogo';
 
 export const dynamic = 'force-dynamic';
 
 export default function AdminLoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const router = useRouter();
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setSuccess("");
+    setError('');
+    setSuccess('');
     setLoading(true);
     try {
       const res = await fetch('/api/admin/login', {
@@ -30,69 +34,74 @@ export default function AdminLoginPage() {
         setLoading(false);
         return;
       }
-      setSuccess(`Logged in as ${data.role}!`);
-      setTimeout(() => {
+      setSuccess(`Logged in as ${data.role}. Redirecting…`);
+      window.setTimeout(() => {
         router.push('/admin');
         router.refresh();
       }, 500);
-    } catch (err: any) {
-      setError(err.message || 'Network error');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error');
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-[480px] mx-auto py-12">
-      <div className="bg-white rounded-[24px] border border-stone-200 p-8">
-        <div className="w-10 h-10 rounded-xl bg-obsidian text-white flex items-center justify-center font-black">B</div>
-        <h1 className="mt-6 font-display text-[28px] leading-none">Admin Login</h1>
-        <p className="mt-3 text-[13px] text-obsidian/60">
-          Sign in with your admin account credentials.
-        </p>
+    <div className="max-w-[460px] mx-auto py-10">
+      <Card bodyClass="p-6">
+        <div className="flex items-center gap-2.5">
+          <span className="w-9 h-9 bg-obsidian rounded-[10px] flex items-center justify-center">
+            <BrandMark className="w-6 h-6 text-lime" />
+          </span>
+          <div className="leading-tight">
+            <span className="block text-[13px] font-bold text-gray-900">Basco Sports</span>
+            <span className="block text-[9px] uppercase tracking-[0.2em] text-gray-400 font-medium">Admin Console</span>
+          </div>
+        </div>
 
-        <form onSubmit={onSubmit} className="mt-8 space-y-4">
-          <div>
-            <label className="text-[12px] opacity-60">Email address</label>
+        <h1 className="mt-6 text-xl font-bold text-gray-900 tracking-tight">Sign in</h1>
+        <p className="mt-1 text-[12px] text-gray-500">Use your admin account credentials. Sessions are httpOnly and signed.</p>
+
+        <form onSubmit={onSubmit} className="mt-6 space-y-4">
+          <Field label="Email address" required>
             <input
               value={email}
-              onChange={e => setEmail(e.target.value)}
+              onChange={(e) => setEmail(e.target.value)}
               required
               type="email"
+              autoComplete="username"
               placeholder="admin@example.com"
-              className="mt-1 w-full h-11 px-4 rounded-full border border-stone-200 focus:outline-none focus:ring-2 focus:ring-lime-300"
+              className={INPUT_CLS}
             />
-          </div>
-          <div>
-            <label className="text-[12px] opacity-60">Password</label>
+          </Field>
+          <Field label="Password" required>
             <input
               value={password}
-              onChange={e => setPassword(e.target.value)}
+              onChange={(e) => setPassword(e.target.value)}
               required
               type="password"
+              autoComplete="current-password"
               placeholder="••••••••"
-              className="mt-1 w-full h-11 px-4 rounded-full border border-stone-200 focus:outline-none focus:ring-2 focus:ring-lime-300"
+              className={INPUT_CLS}
             />
-          </div>
+          </Field>
+
           {error && (
-            <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-[13px] text-red-700">{error}</div>
+            <Notice tone="red">
+              <span className="inline-flex items-center gap-1.5"><WarningCircle size={13} weight="fill" /> {error}</span>
+            </Notice>
           )}
-          {success && (
-            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-[13px] text-emerald-700">{success}</div>
-          )}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full h-12 rounded-full bg-obsidian text-white font-semibold disabled:opacity-50 hover:bg-obsidian/90 transition-colors"
-          >
-            {loading ? 'Signing in…' : 'Sign in'}
-          </button>
+          {success && <Notice tone="green">{success}</Notice>}
+
+          <Button type="submit" disabled={loading} className="w-full h-11">
+            <SignIn size={15} weight="bold" /> {loading ? 'Signing in…' : 'Sign in'}
+          </Button>
         </form>
 
-        <div className="mt-6 flex gap-3 text-[12px]">
-          <Link href="/admin" className="underline">← Back to admin</Link>
-          <Link href="/" className="underline ml-auto">Storefront</Link>
+        <div className="mt-6 flex items-center gap-3 text-[12px]">
+          <Link href="/admin" className="text-gray-500 hover:text-gray-800 underline underline-offset-4">Back to console</Link>
+          <Link href="/" className="text-gray-500 hover:text-gray-800 underline underline-offset-4 ml-auto">Storefront</Link>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

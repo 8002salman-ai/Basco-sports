@@ -6,14 +6,17 @@
  *
  * Single interface for admin persistence:
  *  - localStorage adapter (active by default – demo mode, no DB needed)
- *  - Supabase adapter (PostgREST over fetch – activates when
+ *  - Supabase adapter (PostgREST – activates when
  *    NEXT_PUBLIC_SUPABASE_URL + NEXT_PUBLIC_SUPABASE_ANON_KEY are set)
  *
  * SECURITY: this module never holds secrets. The Supabase anon key is
  * client-safe by design (RLS protects the tables); the service-role key
- * stays server-side. The schema the Supabase adapter expects is defined in
- * supabase/migrations/0001_admin_schema.sql in this repo.
+ * stays server-side. HTTP itself (headers, JSON envelope, error slicing,
+ * timeout) is delegated to the shared lib/supabase-rest.ts core. The schema
+ * the Supabase adapter expects is defined in supabase/migrations/0001_admin_schema.sql.
  */
+
+import { createRestClient, isRows, type RestResult } from '@/lib/supabase-rest';
 
 export type DbMode = 'local' | 'supabase' | 'unconfigured';
 
@@ -145,83 +148,68 @@ const nullStorage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> = {
 // ---------------------------------------------------------------------------
 export class SupabaseAdapter implements DbAdapter {
   readonly mode: DbMode = 'supabase';
-  private url: string;
-  private anonKey: string;
-  /** When set, sent as Authorization: Bearer (e.g. service_role key) – needed to bypass RLS for admin writes. */
-  private authToken: string | null;
+  private rest: ReturnType<typeof createRestClient>;
 
   constructor(url: string, anonKey: string, authToken?: string | null) {
-    this.url = url.replace(/\/$/, '');
-    this.anonKey = anonKey;
+    // The bearer token (service-role in admin proxies) overrides the anon key
+    // for Authorization while apikey stays the anon key, matching PostgREST.
+    this.rest = createRestClient(url, anonKey);
     this.authToken = authToken ?? null;
   }
 
+  private authToken: string | null;
+
   private endpoint(table: string, id?: string): string {
-    return `${this.url}/rest/v1/${table}${id ? `?id=eq.${encodeURIComponent(id)}` : ''}`;
+    return `${table}${id ? `?id=eq.${encodeURIComponent(id)}` : ''}`;
   }
 
-  private headers(_method: string): Record<string, string> {
-    const h: Record<string, string> = {
-      apikey: this.anonKey,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-    };
-    if (this.authToken) h.Authorization = `Bearer ${this.authToken}`;
-    return h;
-  }
-
-  private async handle<T>(res: Response): Promise<T> {
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`Supabase ${res.status}: ${text.slice(0, 200)}`);
-    }
-    return (await res.json()) as T;
+  /** Shared-core request with the adapter's legacy contract: Prefer header on
+   *  every call, HTTP/transport failures THROWN (routes depend on try/catch). */
+  private async run<T>(path: string, init?: RequestInit): Promise<T> {
+    const headers: Record<string, string> = { Prefer: 'return=representation' };
+    if (this.authToken) headers.Authorization = `Bearer ${this.authToken}`;
+    if (init?.headers) Object.assign(headers, init.headers);
+    const res = await this.rest.request<T>(path, { ...init, headers });
+    if (!res.ok) throw new Error(`Supabase ${res.status}: ${res.error || 'request failed'}`);
+    return (res.data ?? ([] as unknown)) as T;
   }
 
   async list<T>(table: string, opts?: { orderBy?: string; limit?: number }): Promise<T[]> {
-    const url = new URL(this.endpoint(table));
+    const params = new URLSearchParams();
     if (opts?.orderBy) {
       // PostgREST needs dot notation (col.desc) – the panels pass 'col desc'.
-      url.searchParams.set('order', opts.orderBy.replace(/\s+(asc|desc)$/i, '.$1'));
+      params.set('order', opts.orderBy.replace(/\s+(asc|desc)$/i, '.$1'));
     }
-    if (opts?.limit) url.searchParams.set('limit', String(opts.limit));
-    const res = await fetch(url.toString(), { headers: this.headers('GET') });
-    const rows = await this.handle<T[]>(res);
-    return Array.isArray(rows) ? rows : [];
+    if (opts?.limit) params.set('limit', String(opts.limit));
+    const qs = params.toString();
+    const rows = await this.run<T[]>(qs ? `${table}?${qs}` : table);
+    return isRows<T>(rows) ? rows : [];
   }
 
   async get<T>(table: string, id: string): Promise<T | null> {
-    const res = await fetch(this.endpoint(table, id), { headers: this.headers('GET') });
-    const rows = await this.handle<T[]>(res);
-    return Array.isArray(rows) && rows.length ? rows[0] : null;
+    const rows = await this.run<T[]>(this.endpoint(table, id));
+    return isRows<T>(rows) && rows.length ? rows[0] : null;
   }
 
   async findFirst<T>(table: string, column: string, value: string): Promise<T | null> {
-    const url = new URL(this.endpoint(table));
-    url.searchParams.append(column, `eq.${value}`);
-    const res = await fetch(url.toString(), { headers: this.headers('GET') });
-    const rows = await this.handle<T[]>(res);
-    return Array.isArray(rows) && rows.length ? rows[0] : null;
+    const rows = await this.run<T[]>(`${table}?${encodeURIComponent(column)}=eq.${encodeURIComponent(value)}`);
+    return isRows<T>(rows) && rows.length ? rows[0] : null;
   }
 
   async insert<T extends { id: string }>(table: string, row: T): Promise<T> {
-    const res = await fetch(this.endpoint(table), {
+    const rows = await this.run<T[]>(this.endpoint(table), {
       method: 'POST',
-      headers: this.headers('POST'),
       body: JSON.stringify(row),
     });
-    const rows = await this.handle<T[]>(res);
-    return rows[0] || row;
+    return isRows<T>(rows) && rows.length ? rows[0] : row;
   }
 
   async insertRaw<T>(table: string, row: T): Promise<T> {
-    const res = await fetch(this.endpoint(table), {
+    const rows = await this.run<T[]>(this.endpoint(table), {
       method: 'POST',
-      headers: this.headers('POST'),
       body: JSON.stringify(row),
     });
-    const rows = await this.handle<T[]>(res);
-    return rows[0] || row;
+    return isRows<T>(rows) && rows.length ? rows[0] : row;
   }
 
   async update<T extends { id: string }>(table: string, id: string, patch: Partial<T>): Promise<T | null> {
@@ -229,31 +217,20 @@ export class SupabaseAdapter implements DbAdapter {
   }
 
   async updateBy<T>(table: string, column: string, value: string, patch: Partial<T>): Promise<T | null> {
-    const url = new URL(this.endpoint(table));
-    url.searchParams.append(column, `eq.${value}`);
-    const res = await fetch(url.toString(), {
+    const rows = await this.run<T[]>(`${table}?${encodeURIComponent(column)}=eq.${encodeURIComponent(value)}`, {
       method: 'PATCH',
-      headers: this.headers('PATCH'),
       body: JSON.stringify(patch),
     });
-    const rows = await this.handle<T[]>(res);
-    return Array.isArray(rows) && rows.length ? rows[0] : null;
+    return isRows<T>(rows) && rows.length ? rows[0] : null;
   }
 
   async remove(table: string, id: string): Promise<void> {
-    await fetch(this.endpoint(table, id), { method: 'DELETE', headers: this.headers('DELETE') });
+    await this.run(this.endpoint(table, id), { method: 'DELETE' });
   }
 
   async testConnection(): Promise<DbConnectionResult> {
     try {
-      const res = await fetch(this.endpoint('products') + '?limit=1', {
-        headers: this.headers('GET'),
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        return { ok: false, mode: 'supabase', detail: `Supabase HTTP ${res.status}: ${text.slice(0, 120)}` };
-      }
+      await this.run<unknown[]>(`${this.endpoint('products')}?limit=1`);
       return { ok: true, mode: 'supabase', detail: 'Supabase reachable (anon read OK)' };
     } catch (e) {
       return { ok: false, mode: 'supabase', detail: (e as Error).message || 'Supabase unreachable' };

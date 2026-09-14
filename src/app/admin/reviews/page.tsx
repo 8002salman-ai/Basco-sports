@@ -1,13 +1,13 @@
 import { AdminPanelGuard, adminRuntime } from '@/lib/admin/guard';
-import { ReviewsPanel } from '../_panels/ReviewsPanel';
+import { ReviewsView } from '../_panels/CommerceViews';
 
 export const dynamic = adminRuntime.dynamic;
 export const runtime = adminRuntime.runtime;
 
-export default function AdminReviewsPage() {
+export default async function AdminReviewsPage() {
   return (
     <AdminPanelGuard>
-      <ReviewsPanel />
+      <ReviewsView />
     </AdminPanelGuard>
   );
 }

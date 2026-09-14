@@ -1,7 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Sparkles, RefreshCw, ExternalLink } from 'lucide-react';
+import Link from 'next/link';
+import { Sparkle, ArrowsClockwise, ArrowUpRight } from '@phosphor-icons/react';
+import { Badge, Button, Card, KeyValue, Notice, PageHeader, Spinner, StatCard, StatGrid } from '@/components/admin/ui';
 
 interface HealthResult {
   ok: boolean;
@@ -32,75 +34,78 @@ export function HermesPanel() {
     void check();
   }, [check]);
 
+  const state = !health ? 'checking' : health.notConfigured ? 'unconfigured' : health.ok ? 'connected' : 'offline';
+
   return (
-    <div className="max-w-3xl">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="font-display text-[28px] leading-none">Hermes Intel</h1>
-          <p className="mt-1.5 text-[13px] text-obsidian/60">
-            Research &amp; intelligence connector – live status from <code className="bg-stone-100 px-1 rounded">/api/hermes/health</code>
-          </p>
-        </div>
-        <button
-          onClick={check}
-          disabled={checking}
-          className="inline-flex items-center gap-2 h-10 px-5 rounded-full border text-[13px] disabled:opacity-50"
-        >
-          <RefreshCw size={14} className={checking ? 'animate-spin' : ''} /> {checking ? 'Checking…' : 'Re-check'}
-        </button>
-      </div>
+    <div className="space-y-4">
+      <PageHeader
+        title="Hermes Connector"
+        subtitle="Live status of the research connector that feeds AI Intelligence."
+        actions={
+          <>
+            <Link href="/admin/hermes-intel"><Button variant="secondary">Intelligence screens <ArrowUpRight size={13} weight="bold" /></Button></Link>
+            <Button onClick={check} disabled={checking}><ArrowsClockwise size={14} weight="bold" /> {checking ? 'Checking…' : 'Re-check'}</Button>
+          </>
+        }
+      />
 
-      <div className="mt-6 bg-white rounded-[16px] border p-6">
-        <div className="flex items-center gap-2">
-          <Sparkles size={16} className="text-lime-400" />
-          <span className="text-[13px] font-semibold">Connector status</span>
-        </div>
+      <StatGrid cols={3}>
+        <StatCard label="Connector" value={state === 'connected' ? 'Connected' : state === 'unconfigured' ? 'Not configured' : state === 'offline' ? 'Offline' : 'Checking'} hint="GET /api/hermes/health" tone={state === 'connected' ? 'emerald' : state === 'offline' ? 'rose' : 'amber'} icon={<Sparkle size={15} weight="bold" />} />
+        <StatCard label="Last response" value={health?.status ?? '—'} hint="upstream HTTP status" tone="blue" />
+        <StatCard label="Mode" value="Research only" hint="can never activate a listing" tone="violet" />
+      </StatGrid>
 
+      <Card title="Connector status" actions={<Badge tone={state === 'connected' ? 'green' : state === 'unconfigured' ? 'amber' : 'red'}>{state}</Badge>}>
         {!health ? (
-          <div className="mt-4 text-[13px] text-obsidian/50">Checking…</div>
+          <Spinner label="Checking…" />
         ) : health.notConfigured ? (
-          <div className="mt-4">
-            <div className="rounded-[12px] bg-amber-50 border border-amber-200 p-4 text-[13px] text-amber-800">
-              <span className="font-semibold">Hermes not configured.</span> Set{' '}
-              <code className="bg-white/70 px-1 rounded">HERMES_ENABLED=true</code>,{' '}
-              <code className="bg-white/70 px-1 rounded">HERMES_BASE_URL</code> and{' '}
-              <code className="bg-white/70 px-1 rounded">HERMES_API_KEY</code> in the deployment env (Vercel / Cloudflare
-              Pages dashboard) to connect.
-            </div>
-            <div className="mt-3 text-[13px] text-obsidian/60 leading-relaxed">
-              <p>
-                <strong>How to wire (see README → Hermes + Salman OS):</strong> expose the Hermes Agent HTTP API at a
-                public HTTPS URL (e.g. cloudflared tunnel from the Salman OS bridge host), then point{' '}
-                <code className="bg-stone-100 px-1 rounded">HERMES_BASE_URL</code> at it. This storefront is a Hermes{' '}
-                <em>consumer</em> — it proxies <code className="bg-stone-100 px-1 rounded">/health</code> and{' '}
-                <code className="bg-stone-100 px-1 rounded">/v1/orders</code> through the connector.
-              </p>
-            </div>
+          <div className="space-y-3">
+            <Notice tone="amber">
+              <strong>Hermes not configured.</strong> Set <code className="bg-white/70 px-1 rounded">HERMES_ENABLED=true</code>,{' '}
+              <code className="bg-white/70 px-1 rounded">HERMES_BASE_URL</code> and <code className="bg-white/70 px-1 rounded">HERMES_API_KEY</code> in Basco’s own deployment environment to connect.
+            </Notice>
+            <p className="text-[12px] text-gray-600 leading-relaxed">
+              This storefront is a Hermes <em>consumer</em>: it proxies <code className="bg-gray-100 px-1 rounded">/health</code> and{' '}
+              <code className="bg-gray-100 px-1 rounded">/v1/orders</code> through the connector. Expose the Hermes Agent API at a public HTTPS URL, then point{' '}
+              <code className="bg-gray-100 px-1 rounded">HERMES_BASE_URL</code> at it. See README → Hermes + Salman OS.
+            </p>
           </div>
         ) : (
-          <div className="mt-4">
-            <div className="rounded-[12px] bg-emerald-50 border border-emerald-200 p-4 text-[13px] text-emerald-800">
-              <span className="font-semibold">Connected</span> – Hermes API responded {health.status ?? 'OK'}.
-            </div>
+          <div className="space-y-3">
+            <Notice tone={health.ok ? 'green' : 'red'}>
+              {health.ok ? <>Connected — the Hermes API responded {health.status ?? 'OK'}.</> : <>Health check failed{health.status ? ` (HTTP ${health.status})` : ''}: {health.error || 'unknown error'}.</>}
+            </Notice>
             {health.data ? (
-              <pre className="mt-3 rounded-[12px] bg-obsidian text-stone-100 p-4 text-[12px] overflow-auto max-h-72">
-                {JSON.stringify(health.data, null, 2)}
-              </pre>
+              <pre className="rounded-xl bg-gray-900 text-gray-100 p-4 text-[11px] overflow-auto max-h-72">{JSON.stringify(health.data, null, 2)}</pre>
             ) : null}
           </div>
         )}
-      </div>
+      </Card>
 
-      <div className="mt-4 bg-white rounded-[16px] border p-6">
-        <div className="text-[13px] font-semibold">Available proxy endpoints</div>
-        <div className="mt-3 space-y-2 text-[13px]">
-          <a href="/api/hermes/health" target="_blank" rel="noreferrer" className="flex items-center gap-2 text-obsidian/70 hover:text-obsidian">
-            <ExternalLink size={13} /> /api/hermes/health <span className="text-obsidian/40">→ {`HERMES_BASE_URL`}/health</span>
-          </a>
-          <a href="/api/hermes/orders" target="_blank" rel="noreferrer" className="flex items-center gap-2 text-obsidian/70 hover:text-obsidian">
-            <ExternalLink size={13} /> /api/hermes/orders <span className="text-obsidian/40">→ {`HERMES_BASE_URL`}/v1/orders</span>
-          </a>
-        </div>
+      <div className="grid lg:grid-cols-2 gap-4">
+        <Card title="Proxy endpoints" bodyClass="p-4 space-y-2.5">
+          {[
+            { href: '/api/hermes/health', target: 'HERMES_BASE_URL/health' },
+            { href: '/api/hermes/orders', target: 'HERMES_BASE_URL/v1/orders' },
+          ].map((e) => (
+            <a key={e.href} href={e.href} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-[12px] text-gray-700 hover:text-gray-900">
+              <ArrowUpRight size={13} className="text-gray-400" />
+              <code className="font-mono">{e.href}</code>
+              <span className="text-gray-400">→ {e.target}</span>
+            </a>
+          ))}
+        </Card>
+
+        <Card title="Contract" bodyClass="p-4">
+          <KeyValue
+            items={[
+              { label: 'Direction', value: 'Storefront consumes; Hermes never pushes listings' },
+              { label: 'Auth', value: 'Bearer key, server-side only' },
+              { label: 'Suggestions', value: 'Draft-only, with confidence + sources' },
+              { label: 'Budget', value: 'Counts against the AI monthly budget' },
+            ]}
+          />
+        </Card>
       </div>
     </div>
   );

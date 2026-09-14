@@ -5,11 +5,69 @@
 
 import type { Product } from '@/lib/types';
 
-/** Product row in admin storage – Product plus admin-only flags. */
+// ---------------------------------------------------------------------------
+// Catalog row (public.products) – the storefront Product plus the listing
+// workflow fields the admin console edits. Storefront and console read the
+// same table, so this is the one product contract.
+// ---------------------------------------------------------------------------
+
+export type Readiness = 'COMMERCE_READY' | 'REVIEW_REQUIRED' | 'BLOCKED' | 'DRAFT';
+export type SourceType = 'CJ' | 'KONG' | 'IN_HOUSE' | 'OTHER';
+export type ImageStatus = 'COMPLETE' | 'INCOMPLETE' | 'MISSING_ALT';
+
 export interface AdminProduct extends Product {
   isActive: boolean;
   updatedAt: string;
   createdAt: string;
+  sku: string;
+  /** Supplier cost. Null means unknown – never guessed. */
+  cost: number | null;
+  readiness: Readiness;
+  sourceType: SourceType;
+  fulfillment: 'SUPPLIER' | 'IN_HOUSE';
+  inventorySource: 'SUPPLIER_SYNC' | 'MANUAL';
+  lowStockThreshold: number;
+  supplierUrl?: string | null;
+}
+
+/** What the screens render: the row plus what is derived from it. */
+export interface CatalogProduct extends AdminProduct {
+  /** Null when cost is unknown, so the UI can say so instead of inventing 0%. */
+  margin: number | null;
+  imageStatus: ImageStatus;
+}
+
+/** The listing playbook's auto-publish margin floor. */
+export const MARGIN_FLOOR = 45;
+
+export const READINESS_TONE: Record<Readiness, 'green' | 'amber' | 'red' | 'gray'> = {
+  COMMERCE_READY: 'green',
+  REVIEW_REQUIRED: 'amber',
+  BLOCKED: 'red',
+  DRAFT: 'gray',
+};
+
+export const SOURCE_TONE: Record<SourceType, 'blue' | 'violet' | 'gray'> = {
+  CJ: 'blue',
+  KONG: 'violet',
+  IN_HOUSE: 'gray',
+  OTHER: 'gray',
+};
+
+/** Gross margin percent, or null when the supplier cost is unknown. */
+function marginOf(cost: number | null, price: number): number | null {
+  if (cost == null || !price) return null;
+  return Math.round(((price - cost) / price) * 1000) / 10;
+}
+
+/** Gallery completeness – stored nowhere, derived from the image list. */
+function imageStatusOf(images: string[]): ImageStatus {
+  if (!images.length) return 'INCOMPLETE';
+  return images.length > 1 ? 'COMPLETE' : 'MISSING_ALT';
+}
+
+export function toCatalogProduct(row: AdminProduct): CatalogProduct {
+  return { ...row, margin: marginOf(row.cost, row.price), imageStatus: imageStatusOf(row.images) };
 }
 
 export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
