@@ -107,6 +107,8 @@ export interface AdminUser {
   name?: string;
   role: AdminUserRole;
   isBlocked?: boolean;
+  /** Storefront approval: an unapproved account sees no orders. */
+  verified?: boolean;
   createdAt: string;
 }
 

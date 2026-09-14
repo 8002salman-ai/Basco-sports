@@ -15,6 +15,7 @@
  */
 
 import { getServerEnv } from './env';
+import { getServiceRest, isRows } from './supabase-rest';
 import { bytesToB64Url, b64UrlToBytes, hmacSha256, timingSafeEqualBytes } from './admin-auth';
 
 export const CUSTOMER_SESSION_COOKIE = 'basco_customer_session';
@@ -45,6 +46,28 @@ function sessionSecret(): string | null {
 
 export function customerAuthConfigured(): boolean {
   return !!sessionSecret();
+}
+
+/** The customers table's row contract, as the account pages read it. */
+export interface CustomerAccount {
+  id: string;
+  email: string;
+  name: string | null;
+  verified: boolean;
+  isBlocked: boolean;
+}
+
+/**
+ * The account behind a session. `verified` is the approval flag: signup without
+ * an order is open, so order data is served only to an approved account.
+ */
+export async function getCustomerAccount(id: string): Promise<CustomerAccount | null> {
+  const rest = getServiceRest();
+  if (!rest) return null;
+  const res = await rest.request<CustomerAccount[]>(
+    `users?select=id,email,name,verified,isBlocked&id=eq.${encodeURIComponent(id)}&limit=1`,
+  );
+  return res.ok && isRows(res.data) ? res.data[0] : null;
 }
 
 export async function createCustomerSession(user: { id: string; email: string; name?: string }): Promise<string | null> {

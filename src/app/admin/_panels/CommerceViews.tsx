@@ -210,11 +210,16 @@ export function OrdersView() {
 
 export function UsersView() {
   const { rows, source, error, save } = useAdminTable<AdminUser>('users', adminUsers);
-  const [tab, setTab] = useState<'customers' | 'team'>('customers');
+  const [tab, setTab] = useState<'customers' | 'pending' | 'team'>('customers');
   const [addOpen, setAddOpen] = useState(false);
   const [draft, setDraft] = useState({ name: '', email: '' });
 
-  const shown = rows.filter((u) => (tab === 'customers' ? u.role === 'buyer' : u.role === 'admin'));
+  // Signup at /account is open, so a new account starts unapproved and sees no
+  // orders until it is approved here.
+  const customers = rows.filter((u) => u.role === 'buyer' && u.verified !== false);
+  const pending = rows.filter((u) => u.role === 'buyer' && u.verified === false);
+  const team = rows.filter((u) => u.role === 'admin');
+  const shown = tab === 'customers' ? customers : tab === 'team' ? team : pending;
 
   return (
     <div className="space-y-4">
@@ -229,11 +234,12 @@ export function UsersView() {
         <div className="px-3">
           <Tabs
             tabs={[
-              { key: 'customers', label: 'Customers', badge: rows.filter((u) => u.role === 'buyer').length },
-              { key: 'team', label: 'Team', badge: rows.filter((u) => u.role === 'admin').length },
+              { key: 'customers', label: 'Customers', badge: customers.length },
+              { key: 'pending', label: 'Pending', badge: pending.length },
+              { key: 'team', label: 'Team', badge: team.length },
             ]}
             active={tab}
-            onChange={(k) => setTab(k as 'customers' | 'team')}
+            onChange={(k) => setTab(k as 'customers' | 'pending' | 'team')}
           />
         </div>
         <div className="p-4">
@@ -249,14 +255,24 @@ export function UsersView() {
                     <div className="text-[11px] text-gray-500 truncate">{u.email}</div>
                   </div>
                   {u.isBlocked && <Badge tone="red">blocked</Badge>}
+                  {u.verified === false && <Badge tone="amber">pending</Badge>}
                 </div>
-                <div className="mt-3 flex items-center justify-between">
+                <div className="mt-3 flex items-center justify-between gap-2">
                   <span className="text-[11px] text-gray-400">Joined {formatDate(u.createdAt)}</span>
-                  <Toggle on={!u.isBlocked} onChange={(v) => save({ ...u, isBlocked: !v })} label={u.isBlocked ? 'Blocked' : 'Active'} />
+                  <div className="flex items-center gap-2">
+                    {u.verified === false && <Button onClick={() => save({ ...u, verified: true })}>Approve</Button>}
+                    <Toggle on={!u.isBlocked} onChange={(v) => save({ ...u, isBlocked: !v })} label={u.isBlocked ? 'Blocked' : 'Active'} />
+                  </div>
                 </div>
               </div>
             ))}
-            {!shown.length && <EmptyState title="Nobody here yet" hint="Add a user to get started." icon={<UsersIcon size={16} />} />}
+            {!shown.length && (
+              <EmptyState
+                title={tab === 'pending' ? 'Nothing waiting for approval' : 'Nobody here yet'}
+                hint={tab === 'pending' ? 'Accounts created at /account land here for approval.' : 'Add a user to get started.'}
+                icon={<UsersIcon size={16} />}
+              />
+            )}
           </div>
         </div>
       </Card>
@@ -265,12 +281,23 @@ export function UsersView() {
         <div className="space-y-3">
           <Field label="Name"><input className={INPUT_CLS} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /></Field>
           <Field label="Email"><input className={INPUT_CLS} value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} /></Field>
+          <p className="text-[11px] text-gray-500">
+            Created approved. The customer sets their own password by signing up at /account with this email.
+          </p>
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="secondary" onClick={() => setAddOpen(false)}>Cancel</Button>
             <Button
               onClick={() => {
                 if (!draft.email.trim()) return;
-                save({ id: `u-${Date.now()}`, name: draft.name || undefined, email: draft.email.trim(), role: 'buyer', createdAt: new Date().toISOString() });
+                save({
+                  id: `user_${crypto.randomUUID()}`,
+                  name: draft.name || undefined,
+                  // Lowercase: /account matches the email exactly when it claims this row.
+                  email: draft.email.trim().toLowerCase(),
+                  role: 'buyer',
+                  verified: true,
+                  createdAt: new Date().toISOString(),
+                });
                 setDraft({ name: '', email: '' });
                 setAddOpen(false);
               }}

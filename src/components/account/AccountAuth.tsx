@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { BrandMark } from '@/components/layout/BrandLogo';
 
@@ -16,7 +15,6 @@ export default function AccountAuth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [orderNumber, setOrderNumber] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const router = useRouter();
@@ -37,7 +35,7 @@ export default function AccountAuth() {
       const res = await fetch(isSignup ? '/api/account/signup' : '/api/account/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(isSignup ? { email, password, name, orderNumber } : { email, password }),
+        body: JSON.stringify(isSignup ? { email, password, name } : { email, password }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) {
@@ -65,7 +63,7 @@ export default function AccountAuth() {
         </h1>
         <p className="mt-3 text-[14px] text-obsidian/60">
           {isSignup
-            ? 'Your order history, saved addresses and wishlist in one place.'
+            ? 'Your orders and wishlist in one place. A store admin approves new accounts before order history is shown.'
             : 'Welcome back — sign in to see your orders.'}
         </p>
 
@@ -134,28 +132,6 @@ export default function AccountAuth() {
             />
             {isSignup && <p className="mt-1.5 text-[11px] text-obsidian/50">At least 8 characters.</p>}
           </div>
-
-          {isSignup && (
-            <div>
-              <label htmlFor="account-order" className={LABEL_CLS}>
-                Order number
-              </label>
-              <input
-                id="account-order"
-                required
-                value={orderNumber}
-                onChange={(e) => setOrderNumber(e.target.value)}
-                placeholder="BS-123456"
-                className={INPUT_CLS}
-              />
-              <p className="mt-1.5 text-[11px] text-obsidian/50">
-                It is in your order confirmation email — we ask so the account is confirmed to belong to you.{' '}
-                <Link href="/track" className="underline underline-offset-4 hover:text-obsidian">
-                  Look up an order
-                </Link>
-              </p>
-            </div>
-          )}
 
           {error && (
             <p role="alert" className="rounded-xl bg-sale-light px-4 py-3 text-[13px] text-sale">

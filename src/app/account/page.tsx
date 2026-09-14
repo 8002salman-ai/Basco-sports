@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import AccountAuth from '@/components/account/AccountAuth';
 import WishlistPanel from '@/components/account/WishlistPanel';
-import { CUSTOMER_SESSION_COOKIE, verifyCustomerSession } from '@/lib/customer-auth';
+import { CUSTOMER_SESSION_COOKIE, getCustomerAccount, verifyCustomerSession } from '@/lib/customer-auth';
 import { listCustomerOrders } from '@/lib/orders';
 import { formatPrice } from '@/lib/utils';
 
@@ -39,7 +39,11 @@ export default async function AccountPage() {
 
   if (!session) return <AccountAuth />;
 
-  const orders = await listCustomerOrders(session.email);
+  // Signup is open, and orders are linked to a customer by email alone, so only
+  // an approved account is served order data.
+  const account = await getCustomerAccount(session.userId);
+  const approved = account?.verified === true;
+  const orders = approved ? await listCustomerOrders(session.email) : [];
 
   return (
     <main className="max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-14">
@@ -69,7 +73,21 @@ export default async function AccountPage() {
           {orders.length > 0 && <span className="text-[12px] text-obsidian/50">{orders.length} total</span>}
         </div>
 
-        {orders.length === 0 ? (
+        {!approved ? (
+          <div className="mt-4 bg-white rounded-[20px] border border-stone-200 p-6">
+            <p className="text-[14px] text-obsidian/70">Your account is waiting for approval.</p>
+            <p className="mt-1 text-[13px] text-obsidian/50">
+              A store admin reviews new accounts. Once yours is approved, orders placed with {session.email} appear
+              here with their status and tracking.
+            </p>
+            <Link
+              href="/contact"
+              className="mt-5 inline-flex h-11 items-center rounded-full bg-obsidian px-6 text-[14px] font-semibold text-white hover:bg-obsidian-600 transition-colors"
+            >
+              Contact support
+            </Link>
+          </div>
+        ) : orders.length === 0 ? (
           <div className="mt-4 bg-white rounded-[20px] border border-stone-200 p-6">
             <p className="text-[14px] text-obsidian/70">No orders yet.</p>
             <p className="mt-1 text-[13px] text-obsidian/50">
